@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright-mcp/
 
 # next.js
 /.next/
@@ -39,3 +43,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent tooling — installed packages, pinned by skills-lock.json
+/.agents/
+
+# nested separate git repo (has its own remote: AN2Sv772/el-nour)
+/el nour/
+
+# legacy git directory location
+/.git.bak/
+
+# local runtime artifacts
+/dev.log
+/shots/storage-state.json

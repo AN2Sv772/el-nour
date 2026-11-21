@@ -1,0 +1,61 @@
+{
+  "target": "https://el-nour-dashboard.vercel.app/api/export/excel",
+  "measured_at": "2026-11-20T18:59:40Z",
+  "identity": "admin (an2s.q.11@gmail.com), employee (an2s.q.3@gmail.com), viewer (audit-probe-viewer)",
+  "checks": [
+    {
+      "id": "EXP-01",
+      "case": "admin exports orders for 2026-11-01..2026-11-21 as xlsx",
+      "expected": "workbook with the same rows the orders list shows for that range",
+      "observed": "HTTP 200, content-type application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, 540750 bytes, sheet1.xml contains 504 <row> elements (1 header + 503 data rows)",
+      "status": "FAIL",
+      "bug_id": "F-017",
+      "note": "the orders list reports total = 506 for the same range — three orders created between 00:00 and 02:00 Cairo time on 2026-11-01 are missing from the export"
+    },
+    {
+      "id": "EXP-02",
+      "case": "viewer role requests the export",
+      "expected": "403 — the export exposes customer names, phone numbers and addresses",
+      "observed": "HTTP 403 {\"error\":\"Forbidden\"}",
+      "status": "PASS"
+    },
+    {
+      "id": "EXP-03",
+      "case": "employee role exports orders as csv",
+      "expected": "CSV with Arabic headers",
+      "observed": "HTTP 200, text/csv, 18545 bytes, UTF-8 BOM + Arabic header row (رقم الطلب, تاريخ الطلب, اسم العميل, ...)",
+      "status": "PASS"
+    },
+    {
+      "id": "EXP-04",
+      "case": "admin exports customers",
+      "expected": "workbook",
+      "observed": "HTTP 200, 1208607 bytes",
+      "status": "PASS"
+    },
+    {
+      "id": "EXP-05",
+      "case": "admin exports products",
+      "expected": "workbook",
+      "observed": "HTTP 200, 25291 bytes",
+      "status": "PASS"
+    },
+    {
+      "id": "EXP-06",
+      "case": "GET /api/export/excel",
+      "expected": "405 — the route only implements POST",
+      "observed": "HTTP 405",
+      "status": "PASS"
+    },
+    {
+      "id": "EXP-07",
+      "case": "Content-Disposition filename encoding",
+      "expected": "an ASCII fallback that still identifies the file",
+      "observed": "content-disposition: attachment; filename=\"orders_20________2026.xlsx\"; filename*=UTF-8''orders_20_%D9%86%D9%88%D9%81%D9%85%D8%A8%D8%B1_2026.xlsx — the RFC 5987 form is correct, the ASCII fallback drops the Arabic month name entirely",
+      "status": "PARTIAL",
+      "bug_id": "F-018-low",
+      "note": "cosmetic: clients that only read the plain filename receive orders_20________2026.xlsx"
+    }
+  ],
+  "side_effects": "none — the export route reads through the RLS-respecting client and writes no rows"
+}

@@ -1,0 +1,55 @@
+{
+  "base": "http://localhost:3111",
+  "generated_at": "2026-11-20T20:34:53.686Z",
+  "ranges": [
+    {
+      "filter": {
+        "dateFrom": "2026-11-01",
+        "dateTo": "2026-11-21"
+      },
+      "list_status": 200,
+      "list_rows": 506,
+      "list_total": 506,
+      "export_status": 200,
+      "export_rows": 506,
+      "export_bytes": 544028,
+      "missing_from_export": [],
+      "extra_in_export": [],
+      "identical": true
+    },
+    {
+      "filter": {
+        "dateFrom": "2026-10-01",
+        "dateTo": "2026-11-21"
+      },
+      "list_status": 200,
+      "list_rows": 1329,
+      "list_total": 1329,
+      "export_status": 200,
+      "export_rows": 1329,
+      "export_bytes": 1415310,
+      "missing_from_export": [],
+      "extra_in_export": [],
+      "identical": true
+    },
+    {
+      "filter": {
+        "dateFrom": "2026-11-19",
+        "dateTo": "2026-11-21"
+      },
+      "list_status": 200,
+      "list_rows": 43,
+      "list_total": 43,
+      "export_status": 200,
+      "export_rows": 43,
+      "export_bytes": 61564,
+      "missing_from_export": [],
+      "extra_in_export": [],
+      "identical": true
+    }
+  ],
+  "invalid_date_filter": {
+    "status": 400,
+    "body": "{\"error\":\"invalid_date_range\"}"
+  }
+}

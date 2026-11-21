@@ -1,0 +1,101 @@
+{
+  "generated_at": "2026-11-20T20:36:59.502Z",
+  "project": "https://lyswmlmrlviptprhfiph.supabase.co",
+  "config": {
+    "total_imported_orders": 19,
+    "total_updated_orders": 0,
+    "total_skipped_orders": 0,
+    "last_sync_at": "2026-11-20T18:45:16.538+00:00",
+    "last_webhook_at": "2026-11-06T23:23:58.174+00:00",
+    "backfill_imported": 40,
+    "backfill_skipped": 1985
+  },
+  "successful_imports": {
+    "count_content_range": "0-0/2022",
+    "webhook_received_content_range": "*/0",
+    "latest_import": {
+      "id": "f4adc46e-9920-476b-b3c1-2650931bcaae",
+      "created_at": "2026-11-20T18:45:16.472462+00:00"
+    }
+  },
+  "f012_gap": {
+    "counter_total_imported_orders": 19,
+    "successful_imports_in_automation_logs": 2022,
+    "missing_updates": 2003
+  },
+  "sync_logs": {
+    "rows_returned": 8,
+    "rows": [
+      {
+        "id": "6362aea5-f30a-41fe-9a6b-838e6fb8d144",
+        "sync_type": "manual",
+        "status": "success",
+        "orders_imported": 0,
+        "orders_skipped": 0,
+        "created_at": "2026-11-06T23:38:36.09984+00:00"
+      },
+      {
+        "id": "370e8552-4933-4c75-8ca1-3a023bdd50ec",
+        "sync_type": "manual",
+        "status": "success",
+        "orders_imported": 0,
+        "orders_skipped": 0,
+        "created_at": "2026-11-06T22:13:49.980831+00:00"
+      },
+      {
+        "id": "def7c1c0-4f9a-4e38-9b24-12e0f9e8bbf4",
+        "sync_type": "manual",
+        "status": "success",
+        "orders_imported": 0,
+        "orders_skipped": 0,
+        "created_at": "2026-11-06T22:07:28.012884+00:00"
+      },
+      {
+        "id": "a01bcda0-b507-44d1-b834-ecd2aef9339b",
+        "sync_type": "manual",
+        "status": "success",
+        "orders_imported": 0,
+        "orders_skipped": 0,
+        "created_at": "2026-11-06T22:06:29.172625+00:00"
+      },
+      {
+        "id": "c1ffe6b5-e93c-489b-a295-1170f3e822ad",
+        "sync_type": "manual",
+        "status": "success",
+        "orders_imported": 0,
+        "orders_skipped": 0,
+        "created_at": "2026-11-06T22:05:16.990808+00:00"
+      },
+      {
+        "id": "703180ce-d5c4-45cc-961d-2a8b63b44ffe",
+        "sync_type": "manual",
+        "status": "success",
+        "orders_imported": 0,
+        "orders_skipped": 0,
+        "created_at": "2026-11-06T22:04:36.831057+00:00"
+      },
+      {
+        "id": "3f73efbd-2c82-4358-9e81-be38d5b4a7c7",
+        "sync_type": "manual",
+        "status": "success",
+        "orders_imported": 0,
+        "orders_skipped": 0,
+        "created_at": "2026-11-06T22:04:16.506131+00:00"
+      },
+      {
+        "id": "5db37715-10e8-4a66-bf84-4d4b30363356",
+        "sync_type": "manual",
+        "status": "success",
+        "orders_imported": 0,
+        "orders_skipped": 0,
+        "created_at": "2026-11-06T21:40:40.007771+00:00"
+      }
+    ]
+  },
+  "functions": {
+    "increment_easyorders_counters": {
+      "status": 404,
+      "body": "Could not find the function public.increment_easyorders_counters without parameters in the schema cache"
+    }
+  }
+}

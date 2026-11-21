@@ -1,26 +1,457 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* ═══════════════════════════════════════════════════════════════════════════
+     El Nour Design System — v2
+     ───────────────────────────────────────────────────────────────────────────
+     Rebuilt on the design language of the Analify AI product UI (the demo at
+     analify-ai.scalyax.ai/demo), with the tokens measured from the live
+     application rather than guessed:
+
+       canvas   #f6f7f9   card #fff   card-2 #fbfcfd
+       border   #e6e6e6   soft #eceef4   strong #d4d8e2
+       text     t1 #0e1726  t2 #5a6577  t3 #6b7280  t4 #b7bdc8
+       accent   #0f766e (light) / #17b8a8 (dark)   chart-1 #0d9488
+       good #047857 / #ecfdf5   bad #be123c / #fff1f3
+       warn #b45309 / #fffbeb   info #3b82f6
+       chrome   #15151a (always dark: the top bar and the sidebar)
+       radii    sm .25rem · md/lg/xl .5rem · 2xl/3xl .75rem · modal 1.5rem
+
+     Tailwind v4 requires COMPLETE values (not raw HSL components), so every
+     colour below is a full hex or a full hsl().
+     ═══════════════════════════════════════════════════════════════════════════ */
+
+  /* ─── Surfaces ────────────────────────────────────────────────────────── */
+  --color-background: #f6f7f9;          /* the canvas the content sits on */
+  --color-foreground: #0e1726;          /* t1 — primary text */
+  --color-card: #ffffff;
+  --color-card-foreground: #0e1726;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0e1726;
+  --color-card-2: #fbfcfd;              /* a raised, quieter surface */
+  --color-muted: #f5f6f9;
+  --color-muted-2: #eef0f4;
+  --color-muted-foreground: #5a6577;    /* t2 — secondary text (5.9:1) */
+  --color-foreground-3: #6b7280;        /* t3 */
+  --color-foreground-4: #b7bdc8;        /* t4 — the faintest label */
+
+  /* ─── The chrome (top bar + sidebar): always dark ─────────────────────── */
+  --color-chrome: #15151a;
+  --color-chrome-2: #1a1a20;
+  --color-chrome-3: #202024;
+  --color-chrome-border: #2a2a30;
+  --color-chrome-border-strong: #3a3a42;
+  --color-chrome-foreground: #f8f9fb;   /* chrome t1 */
+  --color-chrome-muted: #b7bdc8;        /* chrome t2 */
+  --color-chrome-faint: #8b92a0;        /* chrome t3 */
+  --color-chrome-accent: #062a28;       /* the active nav pill */
+  --color-chrome-accent-foreground: #6de8dc;
+
+  /* ─── Accent ──────────────────────────────────────────────────────────── */
+  /* `--color-primary` is accent TEXT (links, active states, icons);
+     `--color-primary-fill` is the solid behind white text. */
+  --color-primary: #0f766e;             /* 4.93:1 on white */
+  --color-primary-fill: #0f766e;        /* 4.93:1 with white text */
+  --color-primary-foreground: #ffffff;
+  --color-primary-hover: #0b7d72;
+  --color-primary-muted: #ecfdf5;
+  --color-primary-soft: #f0fdfa;
+  --color-accent: #f0fdfa;
+  --color-accent-foreground: #0f766e;
+  --color-ring: #0f766e;
+
+  /* ─── Semantic states ─────────────────────────────────────────────────── */
+  --color-success: #047857;
+  --color-success-foreground: #ffffff;
+  --color-success-muted: #ecfdf5;
+  --color-destructive: #be123c;
+  --color-destructive-fill: #be123c;
+  --color-destructive-foreground: #ffffff;
+  --color-destructive-muted: #fff1f3;
+  --color-warning: #b45309;
+  --color-warning-foreground: #ffffff;
+  --color-warning-muted: #fffbeb;
+  --color-info: #3b82f6;
+  --color-info-foreground: #ffffff;
+  --color-info-muted: #eff6ff;
+
+  /* ─── Borders ─────────────────────────────────────────────────────────── */
+  --color-border: #e6e6e6;
+  --color-border-soft: #eceef4;
+  --color-border-strong: #d4d8e2;
+  --color-input: #e6e6e6;
+
+  /* ─── Charts ──────────────────────────────────────────────────────────── */
+  --color-chart-1: #0d9488;
+  --color-chart-2: #6b7280;
+  --color-chart-3: #9aa3af;
+  --color-chart-4: #c7ccd4;
+  --color-chart-5: #e4e7ec;
+
+  /* ─── Radii — the reference scale is tighter than Tailwind's default ──── */
+  --radius: 0.5rem;
+  --radius-none: 0;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 0.75rem;
+  --radius-full: 9999px;
+  --radius-modal: 1.5rem;
+
+  /* ─── Elevation — the reference uses a whisper, not a lift ─────────────── */
+  --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.05);
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05), 0 2px 8px rgb(16 24 40 / 0.07);
+  --shadow-md: 0 4px 8px -2px rgb(16 24 40 / 0.1), 0 10px 24px -6px rgb(16 24 40 / 0.12);
+  --shadow-lg: 0 16px 32px -8px rgb(16 24 40 / 0.18), 0 12px 24px -8px rgb(16 24 40 / 0.12);
+  --shadow-xl: 0 24px 48px -12px rgb(16 24 40 / 0.22);
+
+  /* ─── Motion ──────────────────────────────────────────────────────────── */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─── Dark Mode ──────────────────────────────────────────────────────────────
+   The reference keeps the chrome dark in BOTH themes and flips only the
+   content canvas. These are the values measured on the live demo in dark
+   mode, not a hand-picked dark palette. */
+.dark {
+  --color-background: #0a0a0d;
+  --color-foreground: #f8f9fb;
+  --color-card: #15151a;
+  --color-card-foreground: #f8f9fb;
+  --color-popover: #1a1a20;
+  --color-popover-foreground: #f8f9fb;
+  --color-card-2: #1a1a20;
+  --color-muted: #1c1c22;
+  --color-muted-2: #16161c;
+  --color-muted-foreground: #b7bdc8;
+  --color-foreground-3: #8b92a0;
+  --color-foreground-4: #5a6577;
+
+  --color-primary: #6de8dc;              /* accent text on the dark canvas */
+  --color-primary-fill: #17b8a8;        /* solid behind dark text/white */
+  --color-primary-foreground: #05201d;
+  --color-primary-hover: #2dd4bf;
+  --color-primary-muted: #062a28;
+  --color-primary-soft: #04211f;
+  --color-accent: #062a28;
+  --color-accent-foreground: #6de8dc;
+  --color-ring: #17b8a8;
+
+  --color-success: #34d399;
+  --color-success-foreground: #05201d;
+  --color-success-muted: #022c22;
+  --color-destructive: #fb7185;
+  --color-destructive-fill: #9f1239;
+  --color-destructive-foreground: #ffffff;
+  --color-destructive-muted: #3f0a16;
+  --color-warning: #fbbf24;
+  --color-warning-foreground: #2a1603;
+  --color-warning-muted: #3b2008;
+  --color-info: #60a5fa;
+  --color-info-foreground: #061426;
+  --color-info-muted: #10233f;
+
+  --color-border: #2a2a30;
+  --color-border-soft: #202024;
+  --color-border-strong: #3a3a42;
+  --color-input: #2a2a30;
+
+  --color-chart-1: #17b8a8;
+  --color-chart-2: #8b92a0;
+  --color-chart-3: #6b7280;
+  --color-chart-4: #3a3a42;
+  --color-chart-5: #24242b;
+
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.55), 0 10px 24px -6px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 16px 32px -8px rgb(0 0 0 / 0.7), 0 12px 24px -8px rgb(0 0 0 / 0.55);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    /* Inter is the reference's UI face; IBM Plex Sans Arabic is its Arabic
+       counterpart — a Latin/Arabic pair with matching x-height and stroke
+       weight, so a mixed line ("المبيعات 315,880 ج.م") sits on one baseline. */
+    font-family: var(--font-sans, "IBM Plex Sans Arabic"), "IBM Plex Sans Arabic", Inter, "Cairo", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "tnum";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* The reference sets numbers in a tabular face so a column of money lines
+     up on the decimal point. */
+  .tabular-nums, table, input[type="number"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-ring) 40%, transparent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--color-muted-foreground) 15%, transparent);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--color-muted-foreground) 30%, transparent);
+  }
+
+  /* Kill the 300 ms tap delay on touch devices. Without this, mobile Safari
+     waits before firing click on buttons and links, which makes every tap in
+     the dashboard feel sluggish. */
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  label {
+    touch-action: manipulation;
+  }
+
+  /* Respect the OS "reduce motion" setting. The app animates on hover,
+     on dialog open, and on the live-status spinner; a user who asked the
+     OS to reduce motion should not get any of it. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0ms !important;
+    }
+  }
+
+  /* Respect the OS "reduce transparency" setting. The sticky header, the
+     table headers, the bulk-action bar and the mobile dock are frosted
+     surfaces; with transparency reduced they become opaque so the content
+     behind them can never bleed through and reduce legibility.
+
+     Note on `backdrop-filter`: the CSS minifier rewrites it to the
+     `-webkit-backdrop-filter` alias, and Chrome ignores a prefixed-only
+     override of the utility Tailwind generates. The opaque surfaces below
+     are therefore what actually carries the behaviour — with an opaque
+     background the blur has nothing to sample and stops being visible. */
+  @media (prefers-reduced-transparency: reduce) {
+    .backdrop-blur,
+    .backdrop-blur-sm,
+    .backdrop-blur-md,
+    .backdrop-blur-lg,
+    .backdrop-blur-xl {
+      backdrop-filter: none !important;
+    }
+
+    [class*="bg-background/95"],
+    [class*="bg-background/60"] {
+      background-color: var(--color-background) !important;
+    }
+
+    [class*="bg-card/95"],
+    [class*="bg-card/60"] {
+      background-color: var(--color-card) !important;
+    }
+
+    /* The bulk-action bar is a tinted, translucent strip — the same tint,
+       mixed against the page background, but fully opaque. */
+    [class*="bg-primary/5"] {
+      background-color: color-mix(in oklab, var(--color-primary) 12%, var(--color-background)) !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─── Increased contrast ─────────────────────────────────────────────────── */
+/* Apple's Color guideline: "If you define a custom color, make sure to
+   supply light and dark variants, and an increased contrast option for each
+   variant that provides a significantly higher amount of visual
+   differentiation." The web equivalent of the OS Increase Contrast
+   setting is `prefers-contrast: more`. */
+@media (prefers-contrast: more) {
+  :root {
+    /* Every muted/secondary tone gets darker; every border gets stronger. */
+    --color-muted-foreground: hsl(152 10% 26%);
+    --color-border: hsl(150 8% 52%);
+    --color-ring: hsl(152 60% 24%);
+  }
+
+  .dark {
+    --color-muted-foreground: hsl(150 12% 88%);
+    --color-border: hsl(150 10% 52%);
+    --color-ring: hsl(152 50% 70%);
+  }
+
+  /* Solid surfaces instead of translucent ones. */
+  [class*="bg-primary/5"],
+  [class*="bg-muted/30"],
+  [class*="bg-muted/40"],
+  [class*="bg-muted/50"] {
+    background-color: transparent !important;
+  }
+
+  /* Focus rings must be visible at every size. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* ── The chrome ──────────────────────────────────────────────────────── */
+  .chrome-surface {
+    background-color: var(--color-chrome);
+    color: var(--color-chrome-foreground);
+  }
+
+  /* ── Page furniture ──────────────────────────────────────────────────── */
+  .page-header {
+    @apply flex flex-col gap-3 mb-5 sm:flex-row sm:items-start sm:justify-between;
+  }
+  /* Measured from the live reference: the title is a 20px/600 h1 with a
+     tight line-height, and the context line below it is a quiet 12px. */
+  .page-title {
+    @apply min-w-0 break-words text-xl font-semibold leading-tight tracking-tight text-foreground;
+  }
+  .page-description {
+    @apply text-muted-foreground mt-0.5 text-[12px] leading-relaxed;
+  }
+
+  /* ── Cards: a 1px border and nothing else. The reference's cards carry no
+       shadow — the border IS the separation. ─────────────────────────────── */
+  .card {
+    @apply rounded-2xl border border-border bg-card text-card-foreground;
+  }
+  .card-2 {
+    @apply rounded-2xl border border-border bg-card-2 text-card-foreground;
+  }
+  .card-hover {
+    @apply transition-[border-color,box-shadow] duration-200 hover:border-border-strong;
+  }
+
+  /* ── The tiny caps label the reference uses above every metric ───────── */
+  .eyebrow {
+    @apply text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  /* ── Inputs ──────────────────────────────────────────────────────────── */
+  .input {
+    @apply flex h-9 w-full rounded-lg border border-input bg-card px-3 py-1.5 text-[13px]
+      placeholder:text-muted-foreground/50
+      focus:outline-none focus:ring-2 focus:ring-ring/15 focus:border-ring
+      disabled:cursor-not-allowed disabled:opacity-50
+      transition-all duration-150;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[13px] font-medium
+      bg-primary-fill text-white
+      hover:bg-primary-hover active:bg-primary-hover/90
+      focus:outline-none focus:ring-2 focus:ring-ring/20 focus:ring-offset-1 focus:ring-offset-background
+      disabled:pointer-events-none disabled:opacity-45
+      transition-all duration-150;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[13px] font-medium
+      border border-border bg-card text-foreground
+      hover:bg-muted hover:border-border-strong
+      focus:outline-none focus:ring-2 focus:ring-ring/15
+      disabled:pointer-events-none disabled:opacity-45
+      transition-all duration-150;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium
+      hover:bg-muted text-muted-foreground hover:text-foreground
+      focus:outline-none focus:ring-2 focus:ring-ring/10
+      disabled:pointer-events-none disabled:opacity-45
+      transition-colors duration-150;
+  }
+  .btn-destructive {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[13px] font-medium
+      bg-destructive-fill text-white
+      hover:bg-destructive/90
+      focus:outline-none focus:ring-2 focus:ring-destructive/20
+      disabled:pointer-events-none disabled:opacity-45
+      transition-all duration-150;
+  }
+
+  .form-label {
+    @apply block text-[12.5px] font-medium text-foreground mb-1;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-muted-2;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium;
+  }
+
+  /* ── The segmented control (the date range pills in the page header) ─── */
+  /* Measured from the live reference:
+       wrapper  inline-flex h-8 items-stretch overflow-hidden rounded-full
+                border border-border bg-card
+       active   bg-primary/10 text-primary   (accent at 10% opacity)
+       idle     text-muted-foreground
+     The active pill is a rectangle clipped by the rounded container — that is
+     the reference's own behaviour, not an accident of the screenshot. */
+  .segmented {
+    @apply inline-flex h-8 items-stretch overflow-hidden rounded-full border border-border bg-card
+      transition-colors duration-150;
+  }
+  .segmented-item {
+    @apply flex items-center whitespace-nowrap px-2 text-xs font-medium text-muted-foreground
+      transition-colors duration-150 hover:text-foreground
+      focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring;
+  }
+  .segmented-item-active {
+    @apply bg-primary/10 text-primary hover:text-primary;
+  }
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out both;
+}
+
+@media print {
+  aside, header, .no-print { display: none !important; }
+  main { margin: 0 !important; }
 }

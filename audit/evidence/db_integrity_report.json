@@ -1,0 +1,230 @@
+{
+ "generated_at": "2026-11-20T18:56:50.969402+00:00",
+ "tables": {
+  "orders": 2023,
+  "order_items": 2023,
+  "customers": 1922,
+  "products": 12,
+  "expenses": 0,
+  "collection_batches": 0,
+  "collection_allocations": 0,
+  "daily_reconciliations": 0,
+  "inventory_movements": 0,
+  "knowledge_base": 4,
+  "notifications": 1,
+  "audit_log": 6,
+  "automation_logs": 2022,
+  "order_confirmations": 0,
+  "order_confirmation_events": 0,
+  "order_status_history": 0,
+  "easyorders_config": 1,
+  "easyorders_sync_logs": 8,
+  "easyorders_webhook_events": 2,
+  "user_profiles": 3
+ },
+ "checks": [
+  {
+   "check": "order_items without a parent order",
+   "status": "PASS",
+   "detail": "0 orphan line items",
+   "examples": []
+  },
+  {
+   "check": "orders pointing at a missing customer",
+   "status": "PASS",
+   "detail": "0 orders",
+   "examples": []
+  },
+  {
+   "check": "orders without a customer reference",
+   "status": "PASS",
+   "detail": "0 orders have customer_id = null",
+   "examples": []
+  },
+  {
+   "check": "orders without any line item",
+   "status": "WARN",
+   "detail": "1 orders",
+   "examples": [
+    "EO-261120-19N8KU"
+   ]
+  },
+  {
+   "check": "order_items pointing at a missing product",
+   "status": "PASS",
+   "detail": "0 line items",
+   "examples": []
+  },
+  {
+   "check": "duplicate order numbers",
+   "status": "PASS",
+   "detail": "0 duplicated order numbers",
+   "examples": []
+  },
+  {
+   "check": "duplicate EasyOrders identifiers (re-import guard)",
+   "status": "PASS",
+   "detail": "0 duplicated external ids",
+   "examples": []
+  },
+  {
+   "check": "order totals equal subtotal - discount + shipping + tax",
+   "status": "PASS",
+   "detail": "0 orders violate the identity",
+   "examples": []
+  },
+  {
+   "check": "line totals equal quantity * price - discount",
+   "status": "PASS",
+   "detail": "0 line items violate the identity",
+   "examples": []
+  },
+  {
+   "check": "negative quantities",
+   "status": "PASS",
+   "detail": "0 line items",
+   "examples": []
+  },
+  {
+   "check": "negative unit prices",
+   "status": "PASS",
+   "detail": "0 line items",
+   "examples": []
+  },
+  {
+   "check": "duplicate customer phone numbers",
+   "status": "PASS",
+   "detail": "0 duplicated phone numbers",
+   "examples": []
+  },
+  {
+   "check": "customers.total_orders equals the real order count",
+   "status": "PASS",
+   "detail": "0 of 1922 customers disagree",
+   "examples": []
+  },
+  {
+   "check": "customers.total_spent equals the summed order value",
+   "status": "PASS",
+   "detail": "0 of 1922 customers disagree",
+   "examples": []
+  },
+  {
+   "check": "products without a SKU",
+   "status": "PASS",
+   "detail": "0 products",
+   "examples": []
+  },
+  {
+   "check": "products with cost_price = 0 (COGS cannot be computed)",
+   "status": "WARN",
+   "detail": "12 of 12 products have no cost price",
+   "examples": [
+    "EO-c3750abf-2e47-491e-9b0c-f3692cb663c7",
+    "EO-833a39c3-97e9-4743-bf6e-51b054405c5e",
+    "EO-194132f2-df78-4210-a4c5-1c9f769c51e3",
+    "EO-cb09fbbf-b0a7-4ffa-951f-8a009bdb300c",
+    "EO-f5322617-54ea-49d9-bc32-20c10e37c7a7",
+    "EO-d9598d8c-a395-48d4-afa5-f6ac921286f1",
+    "EO-91e374c8-b44d-4092-a66e-020476e4ff92",
+    "EO-18abd7cf-9ba7-4e9b-a566-fa1728f8db81",
+    "EO-ac17d44d-9455-4b7c-a292-aac572ea89c6",
+    "EO-e7df59fd-0d73-4dff-b919-b910fcd2a800"
+   ]
+  },
+  {
+   "check": "negative stock quantity",
+   "status": "PASS",
+   "detail": "0 products",
+   "examples": []
+  },
+  {
+   "check": "tracked products with negative stock",
+   "status": "PASS",
+   "detail": "0 products",
+   "examples": []
+  },
+  {
+   "check": "orders with an unknown status",
+   "status": "PASS",
+   "detail": "0 orders",
+   "examples": []
+  },
+  {
+   "check": "negative expense amounts",
+   "status": "PASS",
+   "detail": "0 expenses",
+   "examples": []
+  },
+  {
+   "check": "expenses with an unknown category",
+   "status": "PASS",
+   "detail": "0 expenses",
+   "examples": []
+  },
+  {
+   "check": "collection allocations without a parent batch",
+   "status": "PASS",
+   "detail": "0 allocations",
+   "examples": []
+  },
+  {
+   "check": "collection batch expected_amount equals the sum of its allocations",
+   "status": "PASS",
+   "detail": "0 of 0 batches disagree",
+   "examples": []
+  },
+  {
+   "check": "collection allocations pointing at a missing order",
+   "status": "PASS",
+   "detail": "0 allocations",
+   "examples": []
+  },
+  {
+   "check": "daily reconciliation arithmetic",
+   "status": "PASS",
+   "detail": "0 of 0 reconciliations disagree",
+   "examples": []
+  },
+  {
+   "check": "business days with orders but no reconciliation row",
+   "status": "WARN",
+   "detail": "76 of 76 order days have no reconciliation row",
+   "examples": [
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-10",
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15"
+   ]
+  },
+  {
+   "check": "user profiles with an unknown role",
+   "status": "PASS",
+   "detail": "0 profiles",
+   "examples": []
+  },
+  {
+   "check": "audit_log is populated",
+   "status": "PASS",
+   "detail": "6 audit rows (sampled up to 2000)",
+   "examples": [
+    "reconciliation_created",
+    "product_cost_changed",
+    "collection_batch_created",
+    "collection_batch_created",
+    "expense_created"
+   ]
+  }
+ ],
+ "summary": {
+  "pass": 25,
+  "fail": 0,
+  "warn": 3
+ }
+}

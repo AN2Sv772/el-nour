@@ -1,0 +1,26 @@
+{
+  "target": "https://el-nour-dashboard.vercel.app",
+  "viewport": {"width": 1444, "height": 900},
+  "identity": "admin session (cookie sb-lyswmlmrlviptprhfiph-auth-token)",
+  "method": "DOM inspection per route: accessible names for interactive controls, label binding for form fields, heading structure, landmarks, html lang, skip link, horizontal overflow, console errors",
+  "routes_checked": 13,
+  "all_routes_http_200": true,
+  "console_errors": 0,
+  "horizontal_overflow_at_1444": 0,
+  "html_lang_correct": "ar on every route",
+  "landmarks_present": "header/nav/main on 12 of 13 routes; /forgot-password has no landmark at all",
+  "skip_link_present": false,
+  "skip_link_routes": [],
+  "routes_without_h1": ["/", "/dashboard", "/settings/integrations", "/login", "/register", "/forgot-password"],
+  "unnamed_controls": {
+    "/customers": {"controls": 66, "without_name": 20},
+    "/products": {"controls": 37, "without_name": 12}
+  },
+  "unlabelled_fields": {
+    "/settings": {"fields": 16, "without_label": 10},
+    "/reports": {"fields": 3, "without_label": 2},
+    "/reconciliation": {"fields": 2, "without_label": 1}
+  },
+  "images_without_alt": 0,
+  "notes": "The row-action buttons of the customers and products tables are icon-only; the settings form inputs carry no label element, no aria-label and no placeholder."
+}

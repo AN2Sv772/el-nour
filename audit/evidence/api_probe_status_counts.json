@@ -1,0 +1,16 @@
+{
+ "base_url": "https://el-nour-dashboard.vercel.app",
+ "generated_at": "2026-11-20T18:39:17Z",
+ "status_counts": {
+  "200": 111,
+  "400": 40,
+  "401": 156,
+  "403": 41,
+  "404": 13,
+  "405": 7,
+  "429": 40,
+  "500": 21
+ },
+ "blocked": 109,
+ "total_planned": 538
+}

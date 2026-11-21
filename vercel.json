@@ -1,0 +1,15 @@
+{
+  "buildCommand": "npm run build",
+  "installCommand": "npm install --legacy-peer-deps --include=dev",
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/integrations/easyorders/catch-up",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/report-snapshot",
+      "schedule": "30 23 * * *"
+    }
+  ]
+}

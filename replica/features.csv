@@ -1,0 +1,70 @@
+feature,area,priority,analify_has,elnour_before,elnour_target,status,notes
+Executive home with today's numbers,brain,must,yes,partial,yes,yes,"S01 — /dashboard: cards+trend+decisions strip, 30-day default"
+Metric card shows calculation + source + range + last update,brain,must,yes,no,yes,yes,MetricCard renders calculation/source/range/lastUpdate
+Metric card shows honest status (actual/estimated/incomplete/unavailable),brain,must,yes,no,yes,yes,StatusChip + CoverageMeter; 5 statuses
+Previous-period comparison on every metric,analytics,must,yes,partial,yes,yes,metrics engine includePrevious → delta % on cards
+Profit withheld when cost data is missing,finance,must,yes,no,yes,yes,P&L withholds subtotals; dashboard shows — with reason
+Revenue + profit charts on home,analytics,must,yes,partial,yes,partial,revenue+orders chart; profit line only when computable
+Top / most profitable / loss-making products,analytics,must,yes,partial,yes,yes,topProducts + losingProducts in metrics engine
+Operational alerts derived from records,brain,must,yes,no,yes,yes,"/decisions — 10 rules, all evidence-backed"
+Business health indicators,brain,must,yes,no,yes,yes,CoverageMeter + brain status + month health panel
+AI observations backed by records,brain,must,yes,no,yes,partial,decisions engine is deterministic; AI prose not wired
+Business profile (name/website/industry/market/currency/tz),brain,must,yes,partial,yes,partial,"business_settings is real; the brain profile tables are written but not applied to production"
+Financial knowledge (costs/shipping rules/expense cats/margin floor),brain,must,yes,partial,yes,partial,"brain migration written (cost/shipping/expense rules); production table pending"
+Products knowledge (costs/margins/stock rules),brain,must,yes,partial,yes,partial,products.cost_price + product_cost_history real
+Operations knowledge (return policy/restock rules/reconciliation SOP),brain,must,yes,partial,yes,partial,"reconciliation + returns rules real; brain rows pending"
+Measurable business goals,finance,must,yes,no,yes,no,"business_goals table written, not applied in prod"
+Business rules in natural language,brain,must,yes,no,yes,no,"business_rules table written, not applied in prod"
+Knowledge sources with reference + verification date + confidence,brain,must,yes,no,yes,no,"business_knowledge_sources written, not applied"
+Add / edit / forget knowledge,brain,must,yes,no,yes,no,blocked: brain tables not applied
+Knowledge search,brain,must,yes,no,yes,no,blocked: brain tables not applied
+Upload business documents + review before saving,brain,must,yes,no,yes,no,not implemented
+Import CSV/XLSX with review,brain,must,yes,no,yes,no,not implemented
+Conflicting facts surfaced for the owner,brain,must,yes,no,yes,no,"not implemented — queued as Gap 7 in replica/diff.md"
+Incomplete + outdated knowledge visible,brain,must,yes,no,yes,partial,brain status shows missing counts
+AI guesses never become verified facts silently,brain,must,yes,no,yes,yes,CHECK constraint ai_read != verified in migration
+Brain status states (not configured/incomplete/learning/ready/needs attention/outdated),brain,must,yes,no,yes,partial,status route implemented; prod table missing → degraded
+Brain audit from explicit requirements (no invented coverage score),brain,must,yes,no,yes,yes,/api/brain/audit lists source→metric mapping
+AI agent answers from real records,agent,must,yes,no,yes,yes,deterministic tools over metrics engine; no fabrication
+Arabic (Egyptian) + English questions,agent,must,yes,no,yes,yes,intent matcher handles AR+EN patterns
+Evidence per answer (range/numbers/calculation/sources/missing/assumptions),agent,must,yes,no,yes,yes,answer cards carry evidence + missing
+Answer statuses (answered/partial/insufficient/cannot retrieve/calculation unavailable),agent,must,yes,no,yes,yes,5 statuses in answer.ts
+Charts + tables inside answers,agent,should,yes,no,yes,no,not implemented in chat cards
+Conversation history + search + continue + delete,agent,must,yes,no,yes,no,not implemented
+Suggested + follow-up questions,agent,should,yes,no,yes,partial,suggested questions only
+Contextual assistant that knows the current page,agent,should,yes,no,yes,no,not implemented
+Provider abstraction (no hardcoded vendor),agent,must,yes,no,yes,yes,openai/anthropic/gemini adapters + mock-verified tests
+Secure server-side provider keys,agent,must,yes,no,yes,yes,"AES-256-GCM, key never leaves server"
+Request limits / usage tracking / timeout / retry,agent,must,yes,no,yes,yes,timeout + token counts; rate limiting on /api/ai/chat
+AI action approval workflow (draft→pending→approved→executed→verified),approvals,must,yes,no,yes,yes,ai_approvals + ai_execution_logs + undo
+Idempotent execution (never twice),approvals,must,yes,no,yes,yes,UNIQUE idempotency_key + exactly-once execute
+Permission re-checked at execution time,approvals,must,yes,no,yes,yes,requireRole(admin) inside execute
+Before/after values + execution errors + audit log,approvals,must,yes,no,yes,yes,before_state snapshot + failure reason
+Finance overview (gross/delivered/costs/shipping/ads/expenses/returns/profit),finance,must,yes,partial,yes,yes,/analytics P&L tab with honest statuses
+Documented profit calculation model,finance,must,yes,partial,yes,yes,each P&L line carries its calculation string
+Cash collected + held by couriers + unreconciled,finance,must,yes,partial,yes,yes,cash flow tab + collection batches
+Daily / weekly / monthly financial reports,finance,must,partial,yes,planned,partial,on-demand + daily snapshot cron; weekly/monthly not scheduled
+Profit by product + by order,finance,must,no,yes,planned,yes,product economics tab + order lines
+Expense analysis,finance,must,partial,yes,planned,yes,expensesByCategory + 'not recorded' notice
+Courier settlement report,finance,must,partial,yes,planned,partial,settlement aging from collection_batches; no courier API
+Returned-order loss report,finance,must,no,yes,planned,partial,"returns counted, loss not monetised without cost data"
+Advertising dashboard (spend/CTR/ROAS) on real data only,marketing,must,yes,no,yes,partial,ads connector contract; no live platform
+Ad profitability beyond platform ROAS,marketing,should,yes,no,yes,no,needs ads spend + defensible attribution
+Shipping intelligence from real reconciliation data,shipping,must,yes,partial,yes,yes,shipping cost from reconciliation + config mismatch decision
+Courier API integrations (Bosta/Mylerz/JT/Aramex),shipping,should,yes,no,blocked,skip,no public API without approval
+Sales / product / customer / operations analytics,analytics,must,yes,partial,yes,partial,sales+products+operations real; customer analytics pending
+Period presets incl. custom range on Africa/Cairo,analytics,must,yes,yes,yes,yes,DATE_RANGE_PRESETS shared by all pages
+Scheduled reports + delivery history,reports,must,yes,no,yes,partial,cron snapshot writes report_snapshots; no delivery channel
+Decision history + before/after measurement,brain,should,yes,no,yes,partial,ai_approvals history; business decisions not persisted
+Read-only external API + scoped tokens,connections,must,yes,no,yes,yes,"/api/v1/metrics + /api/v1/decisions, API-key gated"
+MCP server for external AI clients,connections,should,yes,no,yes,yes,POST /api/mcp JSON-RPC 2.0 — 3 read-only tools
+Role-based permission system,security,must,yes,partial,yes,yes,requireRole(owner/admin/manager/employee/viewer) + RLS
+Audit trail for sensitive operations,security,must,yes,yes,yes,existing,audit_log
+Arabic-first RTL native UI,ui,must,yes,yes,yes,existing,
+Light + dark mode,ui,must,yes,yes,yes,existing,
+Mobile bottom navigation + safe area,ui,must,yes,partial,yes,yes,mobile-bottom-dock + safe-area insets
+AI Operators (scheduled autonomous specialists),operators,could,soon,no,no,not implemented,not in scope this phase
+Agency portfolio (multi-brand),agency,could,beta,no,no,not implemented,single store
+Brand palette + name + marketing site,brand,skip,yes,yes,no,skip,elnour keeps its own identity
+Analify AI credit / billing system,plans,skip,yes,no,no,skip,owner brings their own provider key
+Partner connector marketplace,integrations,skip,yes,no,no,skip,not rebuildable

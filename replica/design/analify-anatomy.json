@@ -1,0 +1,138 @@
+{
+  "report": {
+    "analify-business-overview": {
+      "title": "Analify AI — One AI workspace for your entire ecommerce company",
+      "url": "https://analify.scalyax.ai/demo/business-overview",
+      "bytes": 451473
+    },
+    "analify-home": {
+      "title": "Analify AI — One AI workspace for your entire ecommerce company",
+      "url": "https://analify.scalyax.ai/demo/home",
+      "bytes": 397576
+    },
+    "analify-brain": {
+      "title": "Analify AI — One AI workspace for your entire ecommerce company",
+      "url": "https://analify.scalyax.ai/demo/brain",
+      "bytes": 593049
+    },
+    "analify-finance": {
+      "title": "Analify AI — One AI workspace for your entire ecommerce company",
+      "url": "https://analify.scalyax.ai/demo/finance",
+      "bytes": 389715
+    },
+    "analify-reports": {
+      "title": "",
+      "url": "https://analify-ai.scalyax.ai/demo/analytics/reports",
+      "bytes": 8135
+    },
+    "analify-settings-integrations": {
+      "title": "",
+      "url": "https://analify-ai.scalyax.ai/demo/settings/integrations",
+      "bytes": 8135
+    }
+  },
+  "anatomy": {
+    "title": {
+      "tag": "div",
+      "cls": "flex min-w-0 items-center gap-2",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(8, 8, 8)",
+      "border": "0px solid rgb(230, 230, 230)",
+      "radius": "0px",
+      "pad": "0px",
+      "font": "16px/24px w400",
+      "ls": "normal",
+      "w": 212,
+      "h": 28,
+      "text": "Business Overview"
+    },
+    "titleParent": {
+      "tag": "div",
+      "cls": "flex flex-wrap items-center gap-2 py-1 min-w-0",
+      "bg": "rgba(0, 0, 0, 0)",
+      "color": "rgb(8, 8, 8)",
+      "border": "0px solid rgb(230, 230, 230)",
+      "radius": "0px",
+      "pad": "4px 0px",
+      "font": "16px/24px w400",
+      "ls": "normal",
+      "w": 381,
+      "h": 66,
+      "text": "Business OverviewSynced just now"
+    },
+    "pills": [
+      {
+        "tag": "button",
+        "cls": "hidden items-center whitespace-nowrap px-2 text-xs font-medium transition-colors sm:inline-flex focus-visible:outline-hi",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(102, 102, 102)",
+        "border": "0px solid rgb(230, 230, 230)",
+        "radius": "0px",
+        "pad": "0px 8px",
+        "font": "12px/18px w500",
+        "ls": "normal",
+        "w": 51,
+        "h": 30,
+        "text": "Today"
+      },
+      {
+        "tag": "button",
+        "cls": "hidden items-center whitespace-nowrap px-2 text-xs font-medium transition-colors sm:inline-flex focus-visible:outline-hi",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(102, 102, 102)",
+        "border": "0px solid rgb(230, 230, 230)",
+        "radius": "0px",
+        "pad": "0px 8px",
+        "font": "12px/18px w500",
+        "ls": "normal",
+        "w": 73,
+        "h": 30,
+        "text": "Yesterday"
+      },
+      {
+        "tag": "button",
+        "cls": "hidden items-center whitespace-nowrap px-2 text-xs font-medium transition-colors sm:inline-flex focus-visible:outline-hi",
+        "bg": "oklab(0.510931 -0.0854972 -0.00957102 / 0.1)",
+        "color": "rgb(15, 118, 110)",
+        "border": "0px solid rgb(230, 230, 230)",
+        "radius": "0px",
+        "pad": "0px 8px",
+        "font": "12px/18px w500",
+        "ls": "normal",
+        "w": 81,
+        "h": 30,
+        "text": "Last 7 days"
+      },
+      {
+        "tag": "button",
+        "cls": "hidden items-center whitespace-nowrap px-2 text-xs font-medium transition-colors sm:inline-flex focus-visible:outline-hi",
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(102, 102, 102)",
+        "border": "0px solid rgb(230, 230, 230)",
+        "radius": "0px",
+        "pad": "0px 8px",
+        "font": "12px/18px w500",
+        "ls": "normal",
+        "w": 89,
+        "h": 30,
+        "text": "Last 30 days"
+      }
+    ],
+    "pillWrapper": {
+      "tag": "div",
+      "cls": "inline-flex h-8 items-stretch overflow-hidden rounded-full border border-border bg-card transition-colors duration-150",
+      "bg": "rgb(255, 255, 255)",
+      "color": "rgb(8, 8, 8)",
+      "border": "1px solid rgb(230, 230, 230)",
+      "radius": "9999px",
+      "pad": "0px",
+      "font": "16px/24px w400",
+      "ls": "normal",
+      "w": 561,
+      "h": 32,
+      "text": "TodayYesterdayLast 7 daysLast 30 daysNov 15 – Nov "
+    },
+    "chat": [],
+    "sectionHeads": []
+  }
+}

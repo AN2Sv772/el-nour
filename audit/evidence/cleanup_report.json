@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-11-20T21:20:00Z",
+  "policy": "Only rows that the audit itself created were deleted. Every deletion was identified by an explicit marker (AUDIT-TEST / AUDIT-BATCH-1 / e2e-rejected-* / probe-wrong-secret / probe timestamp window) and counted before and after. No real business row was deleted or modified.",
+  "deleted": [
+    { "table": "orders", "rows": 1, "marker": "EO-261120-1H66H4 (run-1 synthetic order)", "run": 1 },
+    { "table": "order_items", "rows": 1, "marker": "46b41adb… (line of the synthetic order)", "run": 1 },
+    { "table": "customers", "rows": 1, "marker": "9693563e… (synthetic customer)", "run": 1 },
+    { "table": "products", "rows": 1, "marker": "fe947688… (synthetic product)", "run": 1 },
+    { "table": "collection_batches", "rows": 2, "marker": "AUDIT-TEST شركة / AUDIT-BATCH-1 and AUDIT-PARTIAL", "run": 1 },
+    { "table": "collection_allocations", "rows": 1, "marker": "allocation of the AUDIT collection batch", "run": 1 },
+    { "table": "expenses", "rows": 1, "marker": "notes = 'AUDIT-TEST مصروف' (already voided)", "run": 1 },
+    { "table": "daily_reconciliations", "rows": 1, "marker": "created 2026-11-07T21:32 by the audit", "run": 1 },
+    { "table": "easyorders_webhook_events", "rows": 4, "marker": "dead-letter events written by the probe self-tests", "run": 1, "run": 3 },
+    { "table": "automation_logs", "rows": 6, "marker": "probe rows 2026-11-20T18:25 (local build)", "run": 2 },
+    { "table": "automation_logs", "rows": 4, "marker": "probe rows 2026-11-20T18:38 (production run 3)", "run": 3 },
+    { "table": "automation_logs", "rows": 18, "marker": "type = webhook_rejected / reason = invalid_secret, created by the audit probes of 2026-11-13, 11-18, 11-19 and 11-20", "run": 1 },
+    { "table": "auth.users", "rows": 1, "marker": "audit-probe-viewer@elnour.test (temporary identity)", "run": 1 }
+  ],
+  "not_deleted": [
+    { "table": "audit_log", "rows": 6, "reason": "the database refuses DELETE on this table (SQLSTATE 42501 'permission denied for table audit_log'). The immutability of the audit trail is a correct control; the six rows describe the audit's own actions and are left in place." },
+    { "table": "orders / customers / products imported from EasyOrders during the audit", "rows": "8 orders + 7 customers", "reason": "genuine store data imported through the catch-up endpoint (source = easyorders). They are not audit artefacts." }
+  ],
+  "final_counts": {
+    "orders": 2023,
+    "order_items": 2023,
+    "customers": 1922,
+    "products": 12,
+    "expenses": 0,
+    "collection_batches": 0,
+    "collection_allocations": 0,
+    "daily_reconciliations": 0,
+    "automation_logs": 2022,
+    "easyorders_webhook_events": 2,
+    "audit_log": 6,
+    "notifications": 1,
+    "user_profiles": 2
+  },
+  "scripts": [
+    "audit/evidence/cleanup_audit_residue.py",
+    "audit/evidence/db_integrity_check.py"
+  ]
+}

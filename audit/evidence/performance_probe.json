@@ -1,0 +1,70 @@
+{
+ "measured_on": "2026-11-20 (production build, admin identity, 89 probes)",
+ "p50_ms": 957,
+ "p90_ms": 1962,
+ "p95_ms": 2277,
+ "max_ms": 6036,
+ "min_ms": 265,
+ "slowest": [
+  {
+   "ms": 6036,
+   "endpoint": "GET /api/dashboard/stats"
+  },
+  {
+   "ms": 3132,
+   "endpoint": "GET /api/products"
+  },
+  {
+   "ms": 2411,
+   "endpoint": "GET /api/dashboard/stats"
+  },
+  {
+   "ms": 2389,
+   "endpoint": "GET /api/dashboard/stats"
+  },
+  {
+   "ms": 2277,
+   "endpoint": "GET /api/reports/financial"
+  },
+  {
+   "ms": 2135,
+   "endpoint": "GET /api/reconciliation"
+  },
+  {
+   "ms": 2131,
+   "endpoint": "GET /api/integrations/order-confirmation"
+  },
+  {
+   "ms": 2033,
+   "endpoint": "GET /api/customers"
+  },
+  {
+   "ms": 1962,
+   "endpoint": "GET /api/expenses"
+  },
+  {
+   "ms": 1942,
+   "endpoint": "GET /api/reconciliation"
+  },
+  {
+   "ms": 1892,
+   "endpoint": "GET /api/integrations/easyorders/webhook-config"
+  },
+  {
+   "ms": 1877,
+   "endpoint": "GET /api/orders/stats"
+  },
+  {
+   "ms": 1823,
+   "endpoint": "GET /api/products"
+  },
+  {
+   "ms": 1800,
+   "endpoint": "POST /api/integrations/easyorders/test"
+  },
+  {
+   "ms": 1785,
+   "endpoint": "GET /api/dashboard/top-products"
+  }
+ ]
+}
