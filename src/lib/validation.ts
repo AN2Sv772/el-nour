@@ -43,6 +43,28 @@ export const createProductSchema = z.object({
 
 export const updateProductSchema = createProductSchema.partial()
 
+/**
+ * The exact set of fields PATCH /api/products/[id] may write.
+ *
+ * A dedicated schema rather than `updateProductSchema` on purpose: the
+ * allow-list is a privilege decision (stock, images and variants are NOT
+ * editable here), and the values need a bound so a negative price or cost
+ * cannot reach the database — a negative `cost_price` is snapshotted onto
+ * every future order line and inflates the reported margin by that amount.
+ */
+export const patchProductSchema = z.object({
+  name: z.string().min(1, 'اسم المنتج مطلوب').max(255).optional(),
+  name_ar: z.string().max(255).optional().nullable(),
+  sku: z.string().min(1, 'SKU مطلوب').max(100).optional(),
+  category: z.string().optional().nullable(),
+  price: z.number().min(0, 'السعر يجب أن يكون رقماً موجباً').max(99_999_999.99).optional(),
+  cost_price: z.number().min(0, 'التكلفة يجب أن تكون رقماً موجباً').max(99_999_999.99).optional().nullable(),
+  low_stock_threshold: z.number().int().min(0, 'حد إعادة الطلب يجب أن يكون رقماً صحيحاً موجباً').optional(),
+  description: z.string().optional().nullable(),
+  is_active: z.boolean().optional(),
+  track_inventory: z.boolean().optional(),
+})
+
 // Order validation schemas
 export const createOrderSchema = z.object({
   customer_id: z.string().uuid('معرف العميل غير صحيح'),

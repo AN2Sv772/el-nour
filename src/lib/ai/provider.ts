@@ -248,10 +248,16 @@ const gemini: Provider = {
 
     const response = await withTimeout(
       fetch(
-        `${base}/models/${encodeURIComponent(input.model)}:generateContent?key=${encodeURIComponent(input.apiKey)}`,
+        `${base}/models/${encodeURIComponent(input.model)}:generateContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            // The key travels in a HEADER, not in the query string. A URL is
+            // written down by proxies, CDNs, load balancers and error pages;
+            // the Gemini API accepts the key as `x-goog-api-key` instead.
+            'x-goog-api-key': input.apiKey,
+          },
           body: JSON.stringify({
             contents,
             systemInstruction: system ? { parts: [{ text: system }] } : undefined,

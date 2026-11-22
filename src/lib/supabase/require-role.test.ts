@@ -56,24 +56,24 @@ describe('getUserRole', () => {
     expect(await getUserRole('user-1')).toBe('manager')
   })
 
-  it('treats a missing profile as viewer (least privilege)', async () => {
+  it('denies a missing profile instead of granting viewer', async () => {
     mockProfile.mockResolvedValue({ data: null, error: null })
-    expect(await getUserRole('user-1')).toBe('viewer')
+    expect(await getUserRole('user-1')).toBeNull()
   })
 
-  it('treats an inactive profile as viewer', async () => {
+  it('denies an inactive profile instead of downgrading it to viewer', async () => {
     mockProfile.mockResolvedValue({ data: { role: 'admin', is_active: false }, error: null })
-    expect(await getUserRole('user-1')).toBe('viewer')
+    expect(await getUserRole('user-1')).toBeNull()
   })
 
-  it('treats an unknown role as viewer', async () => {
+  it('denies an unknown role', async () => {
     mockProfile.mockResolvedValue({ data: { role: 'superuser', is_active: true }, error: null })
-    expect(await getUserRole('user-1')).toBe('viewer')
+    expect(await getUserRole('user-1')).toBeNull()
   })
 
   it('fails closed when the profile cannot be read', async () => {
     mockProfile.mockResolvedValue({ data: null, error: { message: 'boom' } })
-    expect(await getUserRole('user-1')).toBe('viewer')
+    expect(await getUserRole('user-1')).toBeNull()
   })
 })
 
@@ -110,6 +110,22 @@ describe('requireRole', () => {
     mockGetUser.mockResolvedValue({ user: { id: 'user-1' } })
     mockProfile.mockResolvedValue({ data: { role: 'employee', is_active: true }, error: null })
     const result = await requireRole('admin')
+    expect(result).toBeInstanceOf(NextResponse)
+    expect((result as NextResponse).status).toBe(403)
+  })
+
+  it('rejects a deactivated account on a viewer-only route with 403', async () => {
+    mockGetUser.mockResolvedValue({ user: { id: 'user-1' } })
+    mockProfile.mockResolvedValue({ data: { role: 'admin', is_active: false }, error: null })
+    const result = await requireRole('viewer')
+    expect(result).toBeInstanceOf(NextResponse)
+    expect((result as NextResponse).status).toBe(403)
+  })
+
+  it('rejects an account with no profile on a viewer-only route with 403', async () => {
+    mockGetUser.mockResolvedValue({ user: { id: 'user-1' } })
+    mockProfile.mockResolvedValue({ data: null, error: null })
+    const result = await requireRole('viewer')
     expect(result).toBeInstanceOf(NextResponse)
     expect((result as NextResponse).status).toBe(403)
   })

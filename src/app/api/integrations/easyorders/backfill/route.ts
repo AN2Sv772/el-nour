@@ -2,7 +2,8 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { requireUser } from '@/lib/supabase/require-user'
 import { requireRole } from '@/lib/supabase/require-role'
 import { getBackfillStatus, runBackfillBatch, startBackfill } from '@/lib/easyorders/backfill'
-import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER } from '@/lib/easyorders/internal-trigger'
+import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER, selfOrigin } from '@/lib/easyorders/internal-trigger'
+import { safeEqual } from '@/lib/crypto'
 
 /**
  * GET  /api/integrations/easyorders/backfill          → status + progress
@@ -22,7 +23,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   const authHeader = request.headers.get('authorization')
-  const isCron = cronSecret ? authHeader === `Bearer ${cronSecret}` : false
+  const isCron = cronSecret ? safeEqual(authHeader ?? '', `Bearer ${cronSecret}`) : false
 
   if (!isCron) {
     const auth = await requireRole('admin')
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     const status = await getBackfillStatus()
     // Kick the self-chaining processor (queue drain + backfill batches)
     after(async () => {
-      const origin = new URL(request.url).origin
+      const origin = selfOrigin(new URL(request.url).origin)
       await fetch(`${origin}/api/integrations/easyorders/process-queue`, {
         method: 'POST',
         headers: {

@@ -12,6 +12,19 @@ const ALGO = 'aes-256-gcm'
 const IV_LENGTH = 12
 const AUTH_TAG_LENGTH = 16
 
+/**
+ * Values that are obviously placeholders, not live keys.
+ *
+ * `.env.example` ships one of these. If it were accepted, every credential in
+ * the database would be decryptable by anyone who can read the repository —
+ * so a placeholder key is treated as NO key at all.
+ */
+const PLACEHOLDER_PATTERN =
+  /^(generate-with|your[-_]|change_me|replace[-_]|example|placeholder|todo|xxx|changeme)/i
+
+/** A live encryption key must be long enough to actually be a key. */
+const MIN_ENCRYPTION_KEY_LENGTH = 32
+
 function deriveKey(secret: string): Buffer {
   return crypto.createHash('sha256').update(secret).digest()
 }
@@ -21,6 +34,12 @@ function getEncryptionKey(): Buffer {
   if (!key) {
     throw new Error(
       'CREDENTIALS_ENCRYPTION_KEY is not set. Generate one with: openssl rand -hex 32'
+    )
+  }
+  const trimmed = key.trim()
+  if (trimmed.length < MIN_ENCRYPTION_KEY_LENGTH || PLACEHOLDER_PATTERN.test(trimmed)) {
+    throw new Error(
+      'CREDENTIALS_ENCRYPTION_KEY is still the example placeholder. Generate a real one with: openssl rand -hex 32'
     )
   }
   return deriveKey(key)
@@ -90,6 +109,25 @@ export function decryptSecret(encrypted: string): string {
 export function maskSecret(secret: string): string {
   if (!secret || secret.length < 8) return '••••••••'
   return `${secret.slice(0, 4)}${'•'.repeat(Math.min(12, secret.length - 8))}${secret.slice(-4)}`
+}
+
+/**
+ * Constant-time string comparison.
+ *
+ * A plain `===` short-circuits at the first differing byte, which leaks the
+ * length of the matching prefix through response times. EVERY secret
+ * comparison — the cron bearer, the external API key, the webhook secret —
+ * must use this instead of the `===` operator.
+ */
+export function safeEqual(a: string, b: string): boolean {
+  const bufferA = Buffer.from(a, 'utf8')
+  const bufferB = Buffer.from(b, 'utf8')
+  if (bufferA.length !== bufferB.length) {
+    // Still burn a comparison so the timing does not reveal the length.
+    crypto.timingSafeEqual(bufferA, bufferA)
+    return false
+  }
+  return crypto.timingSafeEqual(bufferA, bufferB)
 }
 
 /**

@@ -4,6 +4,31 @@ import { createProductSchema, validateBody } from '@/lib/validation'
 import type { Product } from '@/types'
 import { requireUser } from '@/lib/supabase/require-user'
 import { requireRole } from '@/lib/supabase/require-role'
+import {
+  escapeFilterValue,
+  isUuid,
+  parsePageParams,
+  parseSortColumn,
+  parseSortOrder,
+  sanitizeSearchTerm,
+} from '@/lib/api-params'
+
+/**
+ * Columns the list UI is allowed to sort by.
+ *
+ * An explicit allow-list: `.order()` appends the column name verbatim, so an
+ * unknown column is both a filter-grammar injection point and a 42703 that
+ * used to surface as an HTTP 500.
+ */
+const PRODUCT_SORT_COLUMNS = {
+  created_at: 'created_at',
+  updated_at: 'updated_at',
+  name: 'name',
+  sku: 'sku',
+  price: 'price',
+  cost_price: 'cost_price',
+  stock_quantity: 'stock_quantity',
+} as const
 
 export async function GET(request: NextRequest) {
   // Authentication: verify the caller's JWT with Supabase Auth
@@ -13,14 +38,24 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceClient()
     const searchParams = request.nextUrl.searchParams
-    
-    const page = parseInt(searchParams.get('page') || '1')
-    const pageSize = parseInt(searchParams.get('pageSize') || '20')
-    const search = searchParams.get('search')
+
+    const pagination = parsePageParams(searchParams)
+    if (!pagination.ok) {
+      return NextResponse.json({ error: pagination.error }, { status: 400 })
+    }
+    const { page, pageSize, offset } = pagination.value
+
+    // The search term reaches a PostgREST `.or()` expression, so it is
+    // sanitised and quoted: a comma, a parenthesis or a quote in the search
+    // box must not be able to rewrite the filter.
+    const search = sanitizeSearchTerm(searchParams.get('search'))
     const stockFilter = searchParams.get('stockFilter')
     const productId = searchParams.get('id')
-    const sortBy = searchParams.get('sortBy') || 'created_at'
-    const sortOrder = searchParams.get('sortOrder') || 'desc'
+    const sort = parseSortColumn(searchParams.get('sortBy'), PRODUCT_SORT_COLUMNS, 'created_at')
+    if (!sort.ok) {
+      return NextResponse.json({ error: sort.error }, { status: 400 })
+    }
+    const ascending = parseSortOrder(searchParams.get('sortOrder'))
     // Inactive products are hidden by default (the catalogue shows what can be
     // sold), but they MUST stay reachable: a product that cannot be seen
     // cannot be re-activated, which turns deactivation into a one-way door.
@@ -33,10 +68,16 @@ export async function GET(request: NextRequest) {
     if (!includeInactive) query = query.eq('is_active', true)
 
     if (productId) {
+      if (!isUuid(productId)) {
+        return NextResponse.json({ error: 'معرف المنتج غير صالح' }, { status: 400 })
+      }
       query = query.eq('id', productId)
     }
     if (search) {
-      query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,name_ar.ilike.%${search}%`)
+      const pattern = `%${escapeFilterValue(search)}%`
+      query = query.or(
+        `name.ilike."${pattern}",sku.ilike."${pattern}",name_ar.ilike."${pattern}"`
+      )
     }
 
     if (stockFilter === 'low') {
@@ -45,11 +86,8 @@ export async function GET(request: NextRequest) {
       query = query.eq('stock_quantity', 0)
     }
 
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' })
-    
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-    query = query.range(from, to)
+    query = query.order(sort.value, { ascending })
+    query = query.range(offset, offset + pageSize - 1)
 
     const { data, error, count } = await query
 

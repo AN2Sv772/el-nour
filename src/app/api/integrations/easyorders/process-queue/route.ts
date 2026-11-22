@@ -4,7 +4,8 @@ import { drainQueue, getQueueStats, retryDeadLetters } from '@/lib/easyorders/qu
 import { getBackfillStatus } from '@/lib/easyorders/backfill'
 import { requireUser } from '@/lib/supabase/require-user'
 import { requireRole } from '@/lib/supabase/require-role'
-import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER, isValidInternalTrigger } from '@/lib/easyorders/internal-trigger'
+import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER, isValidInternalTrigger, selfOrigin } from '@/lib/easyorders/internal-trigger'
+import { safeEqual } from '@/lib/crypto'
 
 /**
  * Give the processor enough wall-clock to finish a backfill batch AND to
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   // Auth: cron secret OR authenticated user
   const cronSecret = process.env.CRON_SECRET
   const authHeader = request.headers.get('authorization')
-  const isCron = cronSecret ? authHeader === `Bearer ${cronSecret}` : false
+  const isCron = cronSecret ? safeEqual(authHeader ?? '', `Bearer ${cronSecret}`) : false
   const isQueueKick = isValidInternalTrigger(request.headers.get(INTERNAL_TRIGGER_HEADER))
 
   let body: { action?: string } = {}
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       // Self-heal: visit to the integrations page resumes stalled chains
       if (stats.pending > 0 || stats.failed > 0 || (bf && bf.status === 'running')) {
         after(async () => {
-          const origin = new URL(request.url).origin
+          const origin = selfOrigin(new URL(request.url).origin)
           await fetch(`${origin}/api/integrations/easyorders/process-queue`, {
             method: 'POST',
             headers: {
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
     // when everything is drained.
     if (moreWork || result.claimed > 0 || stats.pending > 0) {
       after(async () => {
-        const origin = new URL(request.url).origin
+        const origin = selfOrigin(new URL(request.url).origin)
         await fetch(`${origin}/api/integrations/easyorders/process-queue`, {
           method: 'POST',
           headers: {
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
   // (e.g. after a cold start killed a backfill batch).
   if (stats.pending > 0 || stats.failed > 0) {
     after(async () => {
-      const origin = new URL(request.url).origin
+      const origin = selfOrigin(new URL(request.url).origin)
       await fetch(`${origin}/api/integrations/easyorders/process-queue`, {
         method: 'POST',
         headers: {

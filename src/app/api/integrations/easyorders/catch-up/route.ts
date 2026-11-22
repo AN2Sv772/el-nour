@@ -4,7 +4,8 @@ import { catchUpNewOrders, getBackfillStatus } from '@/lib/easyorders/backfill'
 import { drainQueue, getQueueStats, reclaimStuckEvents } from '@/lib/easyorders/queue'
 import { recordEasyOrdersSyncRun } from '@/lib/easyorders/sync'
 import { createServiceClient } from '@/lib/supabase/service'
-import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER } from '@/lib/easyorders/internal-trigger'
+import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER, selfOrigin } from '@/lib/easyorders/internal-trigger'
+import { safeEqual } from '@/lib/crypto'
 
 /**
  * GET  /api/integrations/easyorders/catch-up
@@ -27,7 +28,7 @@ import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER } from '@/lib/easyord
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   const authHeader = request.headers.get('authorization')
-  const isCron = cronSecret ? authHeader === `Bearer ${cronSecret}` : false
+  const isCron = cronSecret ? safeEqual(authHeader ?? '', `Bearer ${cronSecret}`) : false
 
   if (!isCron) {
     const auth = await requireRole('admin')
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
     if (result.needed || drained.processed > 0 || drained.failed > 0) {
       // Kick the processing chain so the new orders are actually imported.
       after(async () => {
-        const origin = new URL(request.url).origin
+        const origin = selfOrigin(new URL(request.url).origin)
         await fetch(`${origin}/api/integrations/easyorders/process-queue`, {
           method: 'POST',
           headers: {

@@ -50,9 +50,13 @@ export async function GET(request: NextRequest) {
       { headers: { 'Cache-Control': 'private, max-age=60' } }
     )
   } catch (error) {
-    console.error('v1 metrics error:', error)
+    // The raw database error is logged server-side, never returned. An
+    // external API caller used to receive the PostgREST message verbatim,
+    // which maps the schema and reveals which tables and settings exist.
+    const reference = globalThis.crypto?.randomUUID?.() ?? `ref-${Date.now()}`
+    console.error(`v1 metrics error [${reference}]:`, error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to read the metrics' },
+      { error: 'Failed to read the metrics', reference },
       { status: 500 }
     )
   }

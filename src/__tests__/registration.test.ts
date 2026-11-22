@@ -9,8 +9,10 @@ const mockAuthAdmin = {
 
 const mockFrom = vi.fn()
 const mockInsert = vi.fn()
-const mockSelect = vi.fn()
+const mockUpsert = vi.fn()
+const mockUpdate = vi.fn()
 const mockEq = vi.fn()
+const mockSelect = vi.fn()
 const mockSingle = vi.fn()
 
 vi.mock("@/lib/supabase/service", () => ({
@@ -165,10 +167,13 @@ describe("registerSchema", () => {
 describe("registration API route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Registration is allow-list only; the allow-list is read per-request.
+    process.env.REGISTRATION_ALLOWED_EMAILS = "ahmed@example.com, existing@example.com"
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    delete process.env.REGISTRATION_ALLOWED_EMAILS
   })
 
   it("creates user and profile on valid registration", async () => {
@@ -180,7 +185,7 @@ describe("registration API route", () => {
     })
 
     mockFrom.mockReturnValue({
-      insert: mockInsert.mockResolvedValue({ data: null, error: null }),
+      upsert: mockUpsert.mockResolvedValue({ data: null, error: null }),
     })
 
     const { POST } = await import("@/app/api/auth/register/route")
@@ -207,13 +212,94 @@ describe("registration API route", () => {
       email_confirm: true,
     })
     expect(mockFrom).toHaveBeenCalledWith("user_profiles")
-    expect(mockInsert).toHaveBeenCalledWith({
-      id: "test-user-id",
-      email: "ahmed@example.com",
-      full_name: "أحمد محمد",
-      role: "employee",
-      is_active: true,
+    // Upsert, not insert: the `handle_new_user` trigger may already have
+    // written the row, and this route is the authority on its role.
+    expect(mockUpsert).toHaveBeenCalledWith(
+      {
+        id: "test-user-id",
+        email: "ahmed@example.com",
+        full_name: "أحمد محمد",
+        role: "employee",
+        is_active: true,
+      },
+      { onConflict: "id" }
+    )
+  })
+
+  it("closes registration when the allow-list is unset", async () => {
+    delete process.env.REGISTRATION_ALLOWED_EMAILS
+
+    const { POST } = await import("@/app/api/auth/register/route")
+
+    const request = new Request("http://localhost/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        fullName: "أحمد محمد",
+        email: "ahmed@example.com",
+        password: "Password123",
+        confirmPassword: "Password123",
+      }),
     })
+
+    const response = await POST(request as any)
+
+    expect(response.status).toBe(403)
+    // No account is created at all.
+    expect(mockAuthAdmin.createUser).not.toHaveBeenCalled()
+  })
+
+  it("rejects an email that is not on the allow-list", async () => {
+    process.env.REGISTRATION_ALLOWED_EMAILS = "someone-else@example.com"
+
+    const { POST } = await import("@/app/api/auth/register/route")
+
+    const request = new Request("http://localhost/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        fullName: "أحمد محمد",
+        email: "ahmed@example.com",
+        password: "Password123",
+        confirmPassword: "Password123",
+      }),
+    })
+
+    const response = await POST(request as any)
+
+    expect(response.status).toBe(403)
+    expect(mockAuthAdmin.createUser).not.toHaveBeenCalled()
+  })
+
+  it("demotes the account to an inactive viewer when the profile upsert fails", async () => {
+    mockAuthAdmin.createUser.mockResolvedValue({
+      data: { user: { id: "test-user-id", email: "ahmed@example.com" } },
+      error: null,
+    })
+
+    mockUpsert.mockResolvedValue({ data: null, error: { message: "write failed" } })
+    // `.update()` returns a filter builder, so `.eq()` has to hang off it.
+    mockUpdate.mockReturnValue({ eq: mockEq })
+    mockEq.mockResolvedValue({ data: null, error: null })
+    mockFrom.mockReturnValue({
+      upsert: mockUpsert,
+      update: mockUpdate,
+    })
+
+    const { POST } = await import("@/app/api/auth/register/route")
+
+    const request = new Request("http://localhost/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        fullName: "أحمد محمد",
+        email: "ahmed@example.com",
+        password: "Password123",
+        confirmPassword: "Password123",
+      }),
+    })
+
+    const response = await POST(request as any)
+
+    expect(response.status).toBe(200)
+    expect(mockUpdate).toHaveBeenCalledWith({ role: "viewer", is_active: false })
   })
 
   it("returns 400 for invalid input", async () => {

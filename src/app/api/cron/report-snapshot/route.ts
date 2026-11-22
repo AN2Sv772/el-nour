@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { buildBusinessOverview } from '@/lib/metrics/engine'
 import { buildDecisions } from '@/lib/decisions/engine'
 import { businessDateString, BUSINESS_TIME_ZONE } from '@/lib/date-range'
+import { safeEqual } from '@/lib/crypto'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       )
     }
-    if (request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
+    if (!safeEqual(request.headers.get('authorization') ?? '', `Bearer ${cronSecret}`)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

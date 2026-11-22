@@ -115,8 +115,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * POST /api/reconciliation — close a business day.
+ *
+ * MANAGER, NOT EMPLOYEE. Closing a day locks the reconciled profit, books the
+ * returned quantities and changes the stock counters. The database policy
+ * "Managers manage reconciliations" allows admin and manager only, and the
+ * route writes through the service-role client — so the app layer is the only
+ * gate that actually applies.
+ */
 export async function POST(request: NextRequest) {
-  const auth = await requireRole('employee')
+  const auth = await requireRole('manager')
   if (auth instanceof NextResponse) return auth
 
   try {
@@ -266,8 +275,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * PUT /api/reconciliation — reopen a closed business day and rewrite its
+ * reconciled profit.
+ *
+ * MANAGER, NOT EMPLOYEE, for the same reason as POST: this rewrites the
+ * profit the books report.
+ */
 export async function PUT(request: NextRequest) {
-  const auth = await requireRole('employee')
+  const auth = await requireRole('manager')
   if (auth instanceof NextResponse) return auth
 
   try {

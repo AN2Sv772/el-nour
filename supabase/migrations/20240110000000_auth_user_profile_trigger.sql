@@ -4,6 +4,20 @@
 -- ============================================================================
 
 -- Function to create user profile on auth user creation
+--
+-- The account starts with NO authority: role `viewer` and INACTIVE.
+--
+-- WHY THIS CHANGED
+-- ----------------
+-- This trigger used to mint role `employee` with `is_active = true`. Every
+-- `auth.users` insert — including a stranger who found the public /register
+-- link — became a business-WRITE account: create orders, edit prices,
+-- adjust stock, and export every customer's name, phone and address.
+--
+-- `viewer` + inactive is the safe default: the registration route promotes
+-- the account to the intended role, and an admin promotes it later. A
+-- deactivated account resolves to DENY in `require-role.ts`, so an account
+-- that never gets promoted can do nothing at all.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -17,8 +31,8 @@ BEGIN
     NEW.id,
     NEW.email,
     NEW.raw_user_meta_data->>'full_name',
-    'employee',
-    true
+    'viewer',
+    false
   )
   ON CONFLICT (id) DO NOTHING;
   

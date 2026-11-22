@@ -13,9 +13,25 @@ export interface CsvColumn<T> {
   value: (row: T) => string | number | null | undefined
 }
 
+/**
+ * Characters a spreadsheet treats as the start of a formula.
+ *
+ * A cell whose first character is one of these is EXECUTED as a formula when
+ * the file is opened — `=cmd|' /C calc'!A0` runs a command, `=HYPERLINK(...)`
+ * phones home. A product name comes from employee-supplied data, so the
+ * export is the delivery mechanism.
+ */
+const FORMULA_LEADERS = /^[=+\-@\t\r]/
+
 function escapeCell(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return ''
-  const text = String(value)
+  let text = String(value)
+  // Neutralise formula injection by prefixing a single quote — the text stays
+  // visible, but the spreadsheet shows it as text instead of running it.
+  // Only strings are prefixed: a negative NUMBER is a number, not a formula.
+  if (typeof value === 'string' && FORMULA_LEADERS.test(text)) {
+    text = `'${text}`
+  }
   if (/[",\n\r]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`
   }

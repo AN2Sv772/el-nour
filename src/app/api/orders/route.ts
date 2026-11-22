@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/supabase/require-user'
 import { requireRole } from '@/lib/supabase/require-role'
 import { fetchAllRows } from '@/lib/supabase/paginate'
 import { isRangeNotSatisfiable } from '@/lib/supabase/paginate'
+import { round2 } from '@/lib/finance'
 import {
   buildOrderQuery,
   findOrderIdsByProductSearch,
@@ -247,9 +248,31 @@ export async function POST(request: NextRequest) {
       unitCostById[item.product_id] = product?.cost_price ?? 0
     }
 
+    // Derive every line total from the line's OWN numbers.
+    //
+    // The client used to send `total_price` and the route stored it as-is,
+    // so an order could carry a 500 EGP item with a line total of 1 EGP —
+    // and revenue, the dashboard, the payouts and every customer's
+    // total_spent are computed from these stored columns. The line total is
+    // now DERIVED, never trusted, so the books always add up.
+    const pricedItems = items.map((item) => ({
+      ...item,
+      total_price: round2(
+        Math.max(0, item.unit_price * item.quantity - (item.discount || 0))
+      ),
+    }))
+
     // Calculate totals
-    const subtotal = items.reduce((sum: number, item: { total_price: number }) => sum + item.total_price, 0)
-    const total_amount = subtotal - discount_amount + shipping_fee + tax_amount
+    const subtotal = round2(
+      pricedItems.reduce(
+        (sum: number, item: { total_price: number }) => sum + item.total_price,
+        0
+      )
+    )
+    // The order-level discount cannot exceed the subtotal: otherwise the
+    // stored total turns negative and every report inherits the error.
+    const cappedDiscount = Math.min(discount_amount, subtotal)
+    const total_amount = round2(subtotal - cappedDiscount + shipping_fee + tax_amount)
 
     // Create order
     const order_number = generateOrderNumber()
@@ -263,11 +286,11 @@ export async function POST(request: NextRequest) {
         payment_status: 'pending',
         payment_method,
         subtotal,
-        discount_amount,
+        discount_amount: cappedDiscount,
         shipping_fee,
         tax_amount,
         total_amount,
-        items: items.map((item: { product_id: string; variant_id?: string | null | undefined; product_name: string; product_name_ar?: string | null | undefined; sku: string; variant_name?: string | null | undefined; quantity: number; unit_price: number; discount: number; total_price: number }) => ({
+        items: pricedItems.map((item) => ({
           product_id: item.product_id,
           variant_id: item.variant_id,
           product_name: item.product_name,
@@ -291,7 +314,7 @@ export async function POST(request: NextRequest) {
     if (orderError) throw orderError
 
     // Create order items
-    const orderItems = items.map((item: { product_id: string; variant_id?: string | null | undefined; product_name: string; product_name_ar?: string | null | undefined; sku: string; variant_name?: string | null | undefined; quantity: number; unit_price: number; discount: number; total_price: number }) => ({
+    const orderItems = pricedItems.map((item) => ({
       order_id: order.id,
       product_id: item.product_id,
       variant_id: item.variant_id,

@@ -42,3 +42,28 @@ export function isValidInternalTrigger(received: string | null | undefined): boo
 
 /** Header name used for the internal trigger. */
 export const INTERNAL_TRIGGER_HEADER = 'x-queue-trigger'
+
+/**
+ * The origin this server should call ITSELF on.
+ *
+ * NEVER derive the target of a secret-bearing self-call from the inbound
+ * request: `request.url` is built from the `Host` header, and on a
+ * deployment that trusts the host header an attacker can make the server
+ * hand its internal trigger secret to a host of their choosing — and then
+ * use that secret to drive the queue unauthenticated.
+ *
+ * `INTERNAL_ORIGIN` wins; `NEXT_PUBLIC_APP_URL` is the fallback. Only when
+ * neither is configured do we fall back to the request origin, which is the
+ * pre-existing behaviour.
+ */
+export function selfOrigin(requestOrigin: string): string {
+  const configured = process.env.INTERNAL_ORIGIN || process.env.NEXT_PUBLIC_APP_URL
+  if (configured) {
+    try {
+      return new URL(configured).origin
+    } catch {
+      // A malformed URL is not a reason to leak the secret — fall through.
+    }
+  }
+  return requestOrigin
+}

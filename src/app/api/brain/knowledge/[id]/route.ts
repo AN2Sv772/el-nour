@@ -34,6 +34,20 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
           { status: 403 }
         )
       }
+      // Forgetting is a MANAGER act — the DELETE handler is the forget path,
+      // and it keeps the audit trail. Letting PATCH set `forgotten` would let
+      // any employee silently drop a fact (including an admin-verified one)
+      // out of the business knowledge the assistant answers from.
+      if (
+        body.status === 'forgotten' &&
+        auth.role !== 'manager' &&
+        auth.role !== 'admin'
+      ) {
+        return NextResponse.json(
+          { error: 'نسيان المعلومة يتطلب صلاحية مدير' },
+          { status: 403 }
+        )
+      }
       patch.status = body.status
       if (body.status === 'verified') {
         patch.verified_by = auth.user.id

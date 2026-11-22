@@ -1,9 +1,15 @@
 # AUTONOMOUS TASK STATE — El Nour Dashboard
-Last updated: 2026-11-07 05:30 UTC+2
+Last updated: 2026-11-22
 Scope: Master autonomous implementation (Sections 1–29 mandate)
 
-## ⚠️ Deployment constraint honored
-**No deploy, no push** in this session. All changes local. Production runs the earlier verified deployment (EasyOrders import works in production via webhook — verified with real pipeline test orders).
+## ⚠️ Deployment constraint — SUPERSEDED (2026-11-22)
+This file previously recorded: "**No deploy, no push** in this session. All changes local."
+
+The owner explicitly overrode that constraint ("do everything you want"), so the
+working tree is now **committed and pushed** to `git@github.com:AN2Sv772/el-nour.git`
+(public). The **production deployment is still NOT done** — `vercel --prod` was never
+run, no deployment environment variable was changed, and no database write was made.
+See the "Security hardening round" section at the bottom for the full state.
 
 ## AUTOMATIC ORDER SYNCHRONIZATION — IMPLEMENTED (2026-11-07)
 ### Architecture
@@ -133,3 +139,48 @@ EL_NOUR_{MASTER_AUDIT, EXECUTIVE_SUMMARY, COMPLETE_FEATURE_INVENTORY, FUNCTIONAL
 
 ### اللقطات المحدثة
 أعيد التقاط 9 لقطات في `replica/design/elnour/` (desktop AR/EN، mobile، `orders`، `products`، `overview`) كلها سليمة: EN LTR تظهر الشريط الجانبي يساراً، لا تكرار، زر المساعد في الزاوية، الدور السفلي عربي، لا تجاوز أفقي.
+
+---
+
+## ═══ جولة تدقيق الأمان والتحصين — 2026-11-22 ═══
+
+### ما تم إنجازه
+- **الدفع إلى GitHub**: `git@github.com:AN2Sv772/el-nour.git` (عام) — 455 ملف متتبَّع، سرّ ممسوح، استنساخ نظيف مطابق.
+- **أربعة تدقيقات أمنية متوازية** (مصادقة/RBAC · API خارجي + MCP · طبقة البيانات · الأسرار/التشفير/الويبهوك) — كل نتيجة مُصلَحة في الشجرة ومُتحقَّق منها.
+- **الترحيلات المعلقة مُصحَّحة** — كانت ستفشل عند التطبيق (التفصيل أدناه).
+
+### الإصلاحات (اختصار)
+| المجال | الإصلاح |
+|---|---|
+| الأدوار | `getUserRole` تعيد `null` عند غياب الملف/عدم النشاط/الدور المجهول → 403 بدل دور افتراضي |
+| التسجيل | قائمة بيضاء `REGISTRATION_ALLOWED_EMAILS` فقط؛ غير مضبوطة = 403؛ الحساب الجديد `viewer` غير نشط |
+| ترقية الأدوار | `reconciliation`، `order-confirmation` (PUT)، `brain/knowledge` (forgotten)، `ai/chat` (proposals) → manager+ |
+| حقن الفلاتر | `products/route.ts`: قائمة أعمدة مسموحة + اقتباس `.or()` + تحقق UUID + حدود للترقيم والترتيب |
+| التحقق | `patchProductSchema` (سعر/تكلفة محدودان) قبل تطبيق الحقل المسموح |
+| CSV | تعطيل حقن المعادلات (`=`, `+`, `-`, `@`) |
+| الأسرار | رفض المفاتيح القصيرة/العنصرية · `safeEqual` ثابت الزمن · مفتاح Gemini في ترويسة `x-goog-api-key` |
+| Middleware | عنوان IP من ترويسات الوكيل الموثوقة · إعادة توجيه مفتوحة مغلقة |
+| المخزون | كمية صحيحة ≤ 1,000,000 · التزامن المتفائل (409 عند التعارض) |
+| الطلبات | المجموع يُشتق من الخادم (`round2`) والخصم محدود بالمجموع الفرعي |
+| تسريب الأخطاء | أخطاء الخام استُبدلت برسائل عامة + `reference` UUID |
+| Cron والداخلي | مقارنة ثابتة الزمن + تثبيت المصدر الذاتي (`INTERNAL_ORIGIN`) |
+| MCP | حد 20 رسالة لكل دفعة |
+
+### الأخطاء الحقيقية في قواعد البيانات (كانت ستفشل عند التطبيق)
+1. **`report_snapshots` كان سيتراجع كلياً** — كان يستدعي `app_has_role(auth.uid(), array[...])` (معاملان)، بينما الدالة الحيّة معامل واحد فقط: `app_has_role(minimum text)`. المحرّر يلفّ الملف في معاملة واحدة، فلم يكن الجدول لينشأ أصلاً. **أُصلح** إلى `app_has_role('viewer')` و`app_has_role('manager')`.
+2. **`created_at` كان يُكتب فوقه عند UPDATE** — يدمّر الختم الذي يجعل اللقطة سجلاً ثابتاً للحظة إغلاق اليوم. أُضيف `updated_at` + تريغّر يحدّثه.
+3. **تريغر `handle_new_user` كان يصنع `employee` نشطاً** — أي تسجيل عام يصبح حساب كتابة أعمال مع وصول لبيانات العملاء. أصبح `viewer` غير نشط.
+4. **ترقية الدور عبر RLS** — سياسة "Users can update own profile" تسمح بكتابة `{"role":"admin"}` في صفك بمفتاح `anon` العام. أُضيفت `20260126000000_lock_user_profile_role.sql` (سياسة مقيّدة + `REVOKE UPDATE (role, is_active)`).
+5. **قالب `exec_sql` الخطير** في `run_migrations_final.js` (`SECURITY DEFINER` + `GRANT` لـ `anon`) — لم يُنفَّذ أبداً، لكن لصق واحد في محرّر SQL كان سيمنح قاعدة البيانات للإنترنت المفتوح. حُذف القالب؛ السكربتات الثلاثة صارت غلافاً يوجّه إلى `scripts/apply-migrations.mjs`.
+
+### أدلة التحقق
+- `npx tsc --noEmit` → ✅ clean
+- `npm test` → ✅ **458/458** (38 ملف)
+- `npm run build` → ✅ **91 routes**
+- `npm run test:e2e` → ✅ **36 passed / 1 skipped** (المتخطى هو اختبار MCP — بلا `REPORTS_API_KEY`، وهذا هو العقد الصحيح)
+
+### ⚠️ إجراءات المالك (لم تُنفَّذ — لا أملك الصلاحيات)
+1. **دوّر `SUPABASE_SERVICE_ROLE_KEY`** — كان مكتوباً في 4 ملفات (أُزيل من الشجرة، لكن المفتاح القديم ما زال حيّاً).
+2. **طبّق الترحيلات**: `20260123000000_business_brain.sql` · `20260124000000_ai_approvals.sql` · `20260125000000_report_snapshots.sql` (مُصحّحة) · `20260126000000_lock_user_profile_role.sql` — عبر SQL Editor أو `node scripts/apply-migrations.mjs`.
+3. **اضبط في بيئة النشر**: `REGISTRATION_ALLOWED_EMAILS` · `INTERNAL_ORIGIN` · `CRON_SECRET`.
+4. **النشر** (`vercel --prod`) — لم يُنفَّذ.

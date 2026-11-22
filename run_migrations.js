@@ -1,59 +1,36 @@
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
-const path = require('path');
+#!/usr/bin/env node
+/**
+ * DEPRECATED — use `node scripts/apply-migrations.mjs` instead.
+ *
+ * WHAT THIS USED TO DO
+ * --------------------
+ * It executed every migration statement through a PostgREST RPC named
+ * `exec_sql`. That RPC does not exist in this project — which is the correct
+ * state of affairs, and must stay that way.
+ *
+ * WHY
+ * ---
+ * An `exec_sql(sql text)` helper marked SECURITY DEFINER and granted to
+ * `anon` lets ANYONE holding the PUBLIC anon key (which ships in the
+ * browser bundle) run arbitrary SQL as the function owner: read every
+ * customer record, mint a service-role JWT, or drop the database. One paste
+ * into the SQL Editor would have handed the whole project to the open web.
+ *
+ * The script also swallowed every error and then printed
+ * "All migrations completed!" — a false success signal for migrations that
+ * never ran.
+ *
+ * The supported path applies migrations through the Supabase Management API
+ * or the Supabase CLI, both of which require a real owner credential, or it
+ * prints a paste-ready bundle for the SQL Editor. This shim delegates to it.
+ */
+const { spawnSync } = require('node:child_process')
+const path = require('node:path')
 
-require('dotenv').config({ path: require('path').join(__dirname, '.env.local') });
+const result = spawnSync(
+  process.execPath,
+  [path.join(__dirname, 'scripts', 'apply-migrations.mjs'), ...process.argv.slice(2)],
+  { stdio: 'inherit' }
+)
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing from .env.local');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  }
-});
-
-async function runMigrations() {
-  const migrationFiles = [
-    'supabase/migrations/20240101000000_initial_schema.sql',
-    'supabase/migrations/20240102000000_fix_rls_policies.sql',
-    'supabase/migrations/20240103000000_atomic_order_function.sql',
-    'supabase/migrations/20240104000000_fix_whatsapp_and_orders.sql',
-    'supabase/migrations/20240105000000_easyorders_integration.sql',
-  ];
-
-  for (const file of migrationFiles) {
-    const sql = fs.readFileSync(file, 'utf8');
-    console.log(`Running migration: ${file}`);
-    
-    // Split by semicolon and execute each statement
-    const statements = sql.split(';').filter(s => s.trim());
-    
-    for (const stmt of statements) {
-      if (stmt.trim()) {
-        try {
-          const { error } = await supabase.rpc('exec_sql', { sql: stmt + ';' });
-          if (error) {
-            console.error(`Error in ${file}:`, error);
-          } else {
-            console.log(`  ✓ Executed`);
-          }
-        } catch (e) {
-          console.error(`Exception in ${file}:`, e.message);
-        }
-      }
-    }
-    
-    console.log(`Completed: ${file}`);
-  }
-  
-  console.log('All migrations completed!');
-}
-
-runMigrations().catch(console.error);
+process.exit(result.status ?? 1)

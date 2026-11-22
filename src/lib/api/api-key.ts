@@ -17,33 +17,47 @@
  *     NOT fall open. An unconfigured key must never mean "open to everyone".
  */
 
-import { timingSafeEqual } from 'node:crypto'
+import { safeEqual } from '@/lib/crypto'
 
 /** The environment variable that holds the key. */
 export const API_KEY_ENV = 'REPORTS_API_KEY'
+
+/**
+ * Minimum length of a live key.
+ *
+ * A short key is a guessable key. The repository ships `.env.example` with a
+ * placeholder, and a deployment that copies that file verbatim would
+ * otherwise expose the whole external API to anyone who reads the repo.
+ */
+export const MIN_API_KEY_LENGTH = 32
+
+/**
+ * Values that are obviously placeholders, not live secrets.
+ *
+ * A placeholder must never authenticate anything — an unconfigured key must
+ * mean "closed", never "open to everyone who read the README".
+ */
+const PLACEHOLDER_PATTERN =
+  /^(change_me|your[-_]|generate[-_]|replace[-_]|example|placeholder|todo|xxx|changeme)/i
 
 export type ApiKeyResult =
   | { ok: true }
   | { ok: false; status: 401 | 503; error: string }
 
-/** Read the configured key from the environment. */
+/**
+ * Read the configured key from the environment.
+ *
+ * Returns `null` when the key is missing, blank, too short, or still the
+ * example placeholder — in every one of those cases the API stays closed.
+ */
 export function configuredApiKey(): string | null {
   const value = process.env[API_KEY_ENV]
   if (!value) return null
   const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-/** Constant-time string comparison. */
-function safeEqual(a: string, b: string): boolean {
-  const bufferA = Buffer.from(a, 'utf8')
-  const bufferB = Buffer.from(b, 'utf8')
-  if (bufferA.length !== bufferB.length) {
-    // Still burn a comparison so the timing does not reveal the length.
-    timingSafeEqual(bufferA, bufferA)
-    return false
-  }
-  return timingSafeEqual(bufferA, bufferB)
+  if (!trimmed) return null
+  if (trimmed.length < MIN_API_KEY_LENGTH) return null
+  if (PLACEHOLDER_PATTERN.test(trimmed)) return null
+  return trimmed
 }
 
 /** Extract the key from the request headers. */

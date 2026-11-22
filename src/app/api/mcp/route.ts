@@ -138,6 +138,14 @@ async function runTool(name: string, args: Record<string, unknown>) {
   }
 }
 
+/**
+ * Maximum number of JSON-RPC messages accepted in one batch request.
+ *
+ * The rate limiter counts HTTP requests, not JSON-RPC messages, so without a
+ * cap a single request could carry an unbounded batch.
+ */
+const MAX_BATCH_MESSAGES = 20
+
 export async function POST(request: NextRequest) {
   const auth = verifyApiKey(request)
   if (!auth.ok) {
@@ -155,6 +163,21 @@ export async function POST(request: NextRequest) {
   }
 
   const messages = Array.isArray(body) ? body : [body]
+
+  // One HTTP request may carry a BATCH of JSON-RPC messages, and every
+  // `tools/call` in it runs a full metrics build. The rate limiter counts
+  // HTTP REQUESTS, not messages — so one request could force unbounded work
+  // and an unbounded response, taking the function instance down with it.
+  if (messages.length > MAX_BATCH_MESSAGES) {
+    return NextResponse.json(
+      rpcError(
+        null,
+        -32600,
+        `Too many messages in one batch — the maximum is ${MAX_BATCH_MESSAGES}`
+      ),
+      { status: 400 }
+    )
+  }
 
   const responses: unknown[] = []
 
@@ -200,9 +223,13 @@ export async function POST(request: NextRequest) {
 
         try {
           const data = await runTool(name, args)
+          // Serialise the payload ONCE. It used to be stringified twice (once
+          // for the text block, once for the response body), so every message
+          // cost about three times its own size.
+          const text = JSON.stringify(data, null, 2)
           responses.push(
             rpcResult(id, {
-              content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+              content: [{ type: 'text', text }],
               structuredContent: data,
               isError: false,
             })

@@ -48,6 +48,13 @@ comment on table public.report_snapshots is
   'Daily immutable snapshots of the business metrics, each keeping the honest status of every number.';
 
 -- ── Row Level Security ─────────────────────────────────────────────────────
+-- The role check is the ONE-ARGUMENT form, `app_has_role(minimum text)`,
+-- defined in `20260120000000_align_rls_with_app_roles.sql`. The two-argument
+-- form `app_has_role(auth.uid(), text[])` does NOT exist in this schema, so
+-- this migration used to FAIL at this line — and because the SQL Editor runs
+-- the file as one transaction, the whole table rolled back with it. The
+-- minimum role that satisfies each old array is exactly what the one-argument
+-- form takes: 'viewer' for the read policy, 'manager' for the write policies.
 alter table public.report_snapshots enable row level security;
 
 -- The app connects with the service role (which bypasses RLS), so the
@@ -58,25 +65,32 @@ create policy "report_snapshots_read_authenticated"
   on public.report_snapshots
   for select
   to authenticated
-  using (app_has_role(auth.uid(), array['admin', 'manager', 'employee', 'viewer']));
+  using (app_has_role('viewer'));
 
 drop policy if exists "report_snapshots_write_admin" on public.report_snapshots;
 create policy "report_snapshots_write_admin"
   on public.report_snapshots
   for insert
   to authenticated
-  with check (app_has_role(auth.uid(), array['admin', 'manager']));
+  with check (app_has_role('manager'));
 
 drop policy if exists "report_snapshots_update_admin" on public.report_snapshots;
 create policy "report_snapshots_update_admin"
   on public.report_snapshots
   for update
   to authenticated
-  using (app_has_role(auth.uid(), array['admin', 'manager']))
-  with check (app_has_role(auth.uid(), array['admin', 'manager']));
+  using (app_has_role('manager'))
+  with check (app_has_role('manager'));
 
--- ── updated_at (the table has no mutable business columns, but keep it
---    consistent with the rest of the schema) ─────────────────────────────────
+-- ── updated_at ──────────────────────────────────────────────────────────────
+-- The table keeps BOTH timestamps. The cron route UPSERTS the row for a
+-- business day, so re-running the cron is an UPDATE. The old trigger set
+-- `new.created_at = now()` on update, which OVERWROTE the moment the
+-- snapshot was first written — destroying the very timestamp that makes a
+-- snapshot an immutable record of when the day was closed.
+alter table public.report_snapshots
+  add column if not exists updated_at timestamptz not null default now();
+
 create or replace function public.set_report_snapshots_updated_at()
 returns trigger
 language plpgsql
@@ -84,7 +98,7 @@ security invoker
 set search_path = public
 as $$
 begin
-  new.created_at = now();
+  new.updated_at = now();
   return new;
 end;
 $$;

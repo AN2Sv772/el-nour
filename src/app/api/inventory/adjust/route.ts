@@ -29,6 +29,16 @@ export async function POST(request: NextRequest) {
     if (!Number.isFinite(qty) || qty <= 0) {
       return NextResponse.json({ error: 'الكمية يجب أن تكون رقماً موجباً' }, { status: 400 })
     }
+    // Both the stock column and the ledger column are INTEGERs. A fractional
+    // quantity used to be rounded in the movement row but written unrounded
+    // to the stock counter, so the ledger and the counter silently drifted
+    // apart — exactly the divergence the reconciliation is meant to catch.
+    if (!Number.isInteger(qty)) {
+      return NextResponse.json({ error: 'الكمية يجب أن تكون رقماً صحيحاً' }, { status: 400 })
+    }
+    if (qty > 1_000_000) {
+      return NextResponse.json({ error: 'الكمية أكبر من الحد المسموح' }, { status: 400 })
+    }
     const movementDef = REASONS[movement]
     if (!movementDef) {
       return NextResponse.json({ error: 'نوع الحركة غير صحيح' }, { status: 400 })
@@ -75,12 +85,30 @@ export async function POST(request: NextRequest) {
       .single()
     if (mvError) throw mvError
 
-    // Update stock
-    const { error: stockError } = await supabase
+    // Update the stock.
+    //
+    // Optimistic concurrency: the update only applies if the counter still
+    // holds the value we read. Two concurrent adjustments used to both read
+    // the same number and the second write silently overwrote the first
+    // (a lost update); now the loser affects zero rows, compensates its
+    // ledger row, and tells the caller to retry.
+    const { data: updatedProduct, error: stockError } = await supabase
       .from('products')
       .update({ stock_quantity: product.stock_quantity + signedQty })
       .eq('id', product_id)
+      .eq('stock_quantity', product.stock_quantity)
+      .select('id')
+      .maybeSingle()
     if (stockError) throw stockError
+    if (!updatedProduct) {
+      // Compensate: the movement row was written first, so remove it rather
+      // than leave a ledger entry with no matching stock change.
+      await supabase.from('inventory_movements').delete().eq('id', movementRow.id)
+      return NextResponse.json(
+        { error: 'تغيّر مخزون المنتج في نفس اللحظة — أعد المحاولة' },
+        { status: 409 }
+      )
+    }
 
     await supabase.from('audit_log').insert({
       user_id: auth.user.id,

@@ -66,11 +66,37 @@ function normalizePath(pathname: string): string {
   return pathname.replace(/\/+$/, '').split('?')[0]
 }
 
+/**
+ * The client's IP address, for the rate-limit bucket.
+ *
+ * WHY NOT THE FIRST `x-forwarded-for` ENTRY
+ * ------------------------------------------
+ * The client puts its own value in that header and the edge APPENDS the real
+ * address, so the FIRST entry is attacker-controlled. Taking it meant an
+ * attacker could mint an unlimited number of rate-limit buckets simply by
+ * rotating the header — the 10/min login limit and the 30/min write limit
+ * were both bypassable at will.
+ *
+ * The platform headers below are set by the edge and overwrite whatever the
+ * client sent. When none of them is present, the LAST `x-forwarded-for`
+ * entry is the one the edge appended.
+ */
 function getClientIp(request: NextRequest): string {
+  const platformIp =
+    request.headers.get('x-vercel-forwarded-for') ||
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('true-client-ip')
+  if (platformIp) return platformIp.split(',')[0].trim()
+
   const forwardedFor = request.headers.get('x-forwarded-for')
-  if (forwardedFor) return forwardedFor.split(',')[0].trim()
+  if (forwardedFor) {
+    const parts = forwardedFor.split(',').map((part) => part.trim()).filter(Boolean)
+    if (parts.length) return parts[parts.length - 1]
+  }
+
   const realIp = request.headers.get('x-real-ip')
-  if (realIp) return realIp
+  if (realIp) return realIp.trim()
+
   return 'unknown'
 }
 
@@ -231,8 +257,15 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages (pages only)
   if (hasSession && (pathname === '/login' || pathname === '/register') && !pathname.startsWith('/api/')) {
-    const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/dashboard'
-    return NextResponse.redirect(new URL(redirectTo, request.url))
+    const requested = request.nextUrl.searchParams.get('redirectTo') || '/dashboard'
+    // Only a PATH inside this app is a valid destination. An absolute URL
+    // (`?redirectTo=https://evil.example/x`) used to be honoured as-is, which
+    // turned the login page into an open redirect that lands an already
+    // signed-in user on an attacker's site. `//evil.example` is rejected for
+    // the same reason — it is protocol-relative, not a path.
+    const target =
+      requested.startsWith('/') && !requested.startsWith('//') ? requested : '/dashboard'
+    return NextResponse.redirect(new URL(target, request.url))
   }
 
   // Add rate limit headers for API routes

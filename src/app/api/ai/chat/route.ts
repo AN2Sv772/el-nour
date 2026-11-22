@@ -52,6 +52,35 @@ export async function POST(request: NextRequest) {
     //    action. The owner approves it explicitly.
     const action = await detectActionRequest(supabase, question)
     if (action) {
+      // A proposal is a WRITE into the owner's approval queue, and the
+      // database says so too — "Read: viewer. Propose: employee. Decide:
+      // admin." A viewer may ask questions, but may not queue changes for the
+      // owner to approve: the payload carries attacker-chosen values (a
+      // shipping fee of 0, an expense amount, a product cost) that an admin
+      // might approve without looking closely.
+      if (auth.role === 'viewer') {
+        return NextResponse.json(
+          {
+            mode: 'deterministic',
+            provider: null,
+            detection: { intent: 'unknown', preset: null, comparePreset: null, confidence: 0 },
+            answer: {
+              text: 'فهمت إنك تطلب تغييراً. تسجيل الاقتراحات يحتاج صلاحية موظف — راجع مدير النظام.',
+              status: 'unable_to_retrieve' as const,
+              evidence: {
+                calculation: action.impactSummary,
+                sources: [],
+                missing: ['صلاحية موظف مطلوبة لتسجيل الاقتراح'],
+                metrics: [],
+              },
+              followUps: [],
+              tool: 'propose_action',
+            },
+          },
+          { status: 403 }
+        )
+      }
+
       const key = idempotencyKeyFor(action)
       const { data: created, error: createError } = await supabase
         .from('ai_approvals')

@@ -99,3 +99,57 @@ The Analify reference ships an English LTR shell; the earlier build translated c
 **Verification**:
 - `tsc --noEmit` ✅ | `npm test` ✅ 453/453 | `playwright test` ✅ 36/36 | `npm run build` ✅ 54 routes
 - 9 fresh screenshots in `replica/design/elnour/`: EN LTR sidebar left, AR RTL sidebar right, no duplicate chip, AI launcher cornered, mobile dock Arabic with Assistant link.
+
+---
+
+## Security hardening round — 2026-11-22
+
+Four parallel audits (auth/RBAC · external API + MCP · data layer · secrets/crypto/webhook)
+ran over the whole app; every finding was fixed in the tree, then verified.
+
+| area | fix |
+|------|-----|
+| role resolution | `getUserRole` returns `null` for a missing profile, `is_active = false`, a read error, or an unknown role → **403**, not a default role |
+| registration | allow-list only (`REGISTRATION_ALLOWED_EMAILS`); unset = closed (403); new accounts start `viewer` + inactive |
+| role escalation | `reconciliation`, `order-confirmation` (PUT), `brain/knowledge` (forgotten), `ai/chat` (proposals) → manager+ |
+| filter injection | `products/route.ts`: column allow-list, quoted `.or()`, UUID validation, bounded sort/page params |
+| validation | `patchProductSchema` (bounded price/cost) applied before the field allow-list |
+| CSV | formula-injection neutralisation for `=`, `+`, `-`, `@` |
+| secrets | placeholder/short-key rejection, timing-safe `safeEqual`, Gemini key moved to the `x-goog-api-key` header |
+| middleware | client IP from trusted proxy headers; open redirect closed (`redirectTo` must start with a single `/`) |
+| inventory | integer quantity ≤ 1,000,000 + optimistic concurrency (409 on conflict, compensating delete) |
+| orders | server-derived totals (`round2`), discount capped at the subtotal |
+| error leakage | raw driver errors replaced by generic messages + a UUID `reference` |
+| cron / internal | timing-safe secret comparison + self-origin pinning (`INTERNAL_ORIGIN`) |
+| MCP | 20-message batch cap |
+
+### Database bugs found (they would have failed on apply)
+
+1. **`report_snapshots` would have rolled back entirely** — it called the two-argument
+   `app_has_role(auth.uid(), text[])`, but the live database only has the one-argument
+   `app_has_role(minimum text)`. The SQL Editor wraps the file in one transaction, so
+   the table would not have been created. Fixed to `app_has_role('viewer')` /
+   `app_has_role('manager')`.
+2. **`created_at` was overwritten on UPDATE**, destroying the timestamp that makes a
+   snapshot an immutable record of when the day closed. Added `updated_at` + a trigger
+   that maintains it.
+3. **`handle_new_user` minted `employee` + active** — any public signup became a
+   business-write account with access to the customer export. Now `viewer` + inactive.
+4. **Self-promotion through RLS** — the "Users can update own profile" policy let a
+   signed-in account write `{"role":"admin"}` to its own row with the public anon key.
+   Added `20260126000000_lock_user_profile_role.sql` (pinned self-update policy +
+   `REVOKE UPDATE (role, is_active)`).
+5. **`exec_sql` template removed** — `run_migrations_final.js` carried a
+   `SECURITY DEFINER` + `GRANT ... TO anon` template for an arbitrary-SQL RPC. Never
+   executed, but one paste into the SQL Editor would have handed the database to the
+   open web. All three legacy scripts now delegate to `scripts/apply-migrations.mjs`.
+
+**Verification**:
+- `tsc --noEmit` ✅ clean | `npm test` ✅ **458/458** (38 files) | `npm run build` ✅ **91 routes**
+- `npm run test:e2e` ✅ **36 passed / 1 skipped** (the skip is the MCP test — no
+  `REPORTS_API_KEY` set, which is the correct fail-closed contract)
+- Fresh clone of the pushed repo: identical file set, secret scan clean, no `.env.local`
+
+**Still owner-only (no credentials available to the agent):** rotate
+`SUPABASE_SERVICE_ROLE_KEY`, apply the pending migrations, set `REGISTRATION_ALLOWED_EMAILS`
+/ `INTERNAL_ORIGIN` / `CRON_SECRET` in the deployment environment, and deploy.

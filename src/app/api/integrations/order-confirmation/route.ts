@@ -86,10 +86,16 @@ export async function GET() {
 /**
  * PUT /api/integrations/order-confirmation
  * Save confirmation settings.
+ *
+ * MANAGER, NOT EMPLOYEE. These are store-wide settings — the message the
+ * customer receives, the eligibility rules, the reminder budget. The database
+ * says so too: "Managers can manage confirmation settings" allows admin and
+ * manager only. The app layer has to agree, because the route writes through
+ * the service-role client and RLS never sees this write.
  */
 export async function PUT(request: NextRequest) {
   // Authentication: verify the caller's JWT with Supabase Auth
-  const auth = await requireRole('employee')
+  const auth = await requireRole('manager')
   if (auth instanceof NextResponse) return auth
 
   try {

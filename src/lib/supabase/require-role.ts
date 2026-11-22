@@ -43,11 +43,23 @@ export interface AuthContext {
 /**
  * Resolve the caller's role from `user_profiles`.
  *
- * A missing profile is treated as `viewer` (the least privileged role), not
- * as an error — a signed-in user with no profile must not inherit the
- * permissions of an administrator.
+ * Returns `null` when the caller has NO usable role — and `null` means DENY,
+ * not "the least privilege". A missing profile, a deactivated account, a
+ * profile that cannot be read, or a role outside the vocabulary all deny.
+ *
+ * WHY THIS CHANGED
+ * ----------------
+ * This used to return `viewer` for every one of those cases. `viewer` is not
+ * a safe fallback here: it still passes every `requireRole('viewer')` gate,
+ * so a deactivated employee kept reading customers, orders and the financial
+ * reports for as long as their session lived. The database already disagreed:
+ * `app_role_rank()` in `20260120000000_align_rls_with_app_roles.sql` yields
+ * `-1` (DENY) for a missing or inactive profile, and its own comment claims
+ * it mirrors this file. The app layer is the one that actually applies — every
+ * route reads through the service-role client, which bypasses RLS — so the
+ * app layer is the one that has to fail closed.
  */
-export async function getUserRole(userId: string): Promise<AppRole> {
+export async function getUserRole(userId: string): Promise<AppRole | null> {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('user_profiles')
@@ -57,14 +69,16 @@ export async function getUserRole(userId: string): Promise<AppRole> {
     .maybeSingle()
 
   if (error) {
+    // Fail CLOSED: an unreadable profile is not a reason to grant access.
     console.error('require-role: could not read user profile:', error.message)
-    return 'viewer'
+    return null
   }
-  if (!data) return 'viewer'
-  if (data.is_active === false) return 'viewer'
+  if (!data) return null
+  if (data.is_active === false) return null
 
   const role = String(data.role) as AppRole
-  return APP_ROLES.includes(role) ? role : 'viewer'
+  // An unknown role is corrupt data — deny it, exactly as the database does.
+  return APP_ROLES.includes(role) ? role : null
 }
 
 /**
@@ -78,6 +92,17 @@ export async function requireRole(
   if (auth instanceof NextResponse) return auth
 
   const role = await getUserRole(auth.user.id)
+
+  // No usable role — deactivated, unprovisioned, or an unreadable profile.
+  if (!role) {
+    return NextResponse.json(
+      {
+        error: 'Forbidden',
+        message: 'هذا الحساب غير مُفعّل أو لا يملك ملف مستخدم صالح — راجع مدير النظام.',
+      },
+      { status: 403 }
+    )
+  }
 
   if (ROLE_RANK[role] < ROLE_RANK[minimum]) {
     return NextResponse.json(

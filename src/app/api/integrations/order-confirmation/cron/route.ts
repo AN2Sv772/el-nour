@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { safeEqual } from '@/lib/crypto'
 
 /**
  * POST /api/integrations/order-confirmation/cron
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
       )
     }
     const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (!safeEqual(authHeader ?? '', `Bearer ${cronSecret}`)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

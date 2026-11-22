@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { requireUser } from '@/lib/supabase/require-user'
 import { requireRole } from '@/lib/supabase/require-role'
+import { patchProductSchema } from '@/lib/validation'
 
 /**
  * GET /api/products/[id] — single product
@@ -29,10 +30,27 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     const { id } = await ctx.params
     const body = await request.json()
 
+    // Validate the values BEFORE the allow-list copy. Without this the route
+    // stored whatever the body said, including a negative price or cost.
+    const parsed = patchProductSchema.safeParse(body)
+    if (!parsed.success) {
+      const issues = parsed.error.issues ?? []
+      return NextResponse.json(
+        {
+          error: 'Invalid input',
+          details: issues.map((e) => ({
+            field: e.path?.join('.') || '',
+            message: e.message,
+          })),
+        },
+        { status: 400 }
+      )
+    }
+
     const update: Record<string, unknown> = {}
     const allowed = ['name', 'name_ar', 'sku', 'category', 'price', 'cost_price', 'low_stock_threshold', 'description', 'is_active', 'track_inventory'] as const
     for (const key of allowed) {
-      if (body[key] !== undefined) update[key] = body[key]
+      if (parsed.data[key] !== undefined) update[key] = parsed.data[key]
     }
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'لا يوجد تغيير' }, { status: 400 })

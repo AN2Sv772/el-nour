@@ -1,49 +1,34 @@
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
-const path = require('path');
+#!/usr/bin/env node
+/**
+ * DEPRECATED — use `node scripts/apply-migrations.mjs` instead.
+ *
+ * WHAT THIS USED TO CARRY
+ * -----------------------
+ * A template for creating an `exec_sql(sql text)` helper:
+ *
+ *     CREATE OR REPLACE FUNCTION exec_sql(sql text) RETURNS void
+ *     LANGUAGE plpgsql SECURITY DEFINER ...
+ *     GRANT EXECUTE ON FUNCTION exec_sql(text) TO postgres, anon, authenticated, service_role;
+ *
+ * The template was never executed — the REST API cannot run raw DDL — but it
+ * was a loaded gun sitting in the repository root: one paste into the
+ * Supabase SQL Editor would have created a function that lets ANYONE holding
+ * the PUBLIC anon key run arbitrary SQL as the function owner. The anon key
+ * ships in the browser bundle, so that is a full database takeover reachable
+ * from a browser by anyone who opened the dev tools.
+ *
+ * The template has been removed. The supported path applies migrations
+ * through the Supabase Management API or the Supabase CLI — both of which
+ * require a real owner credential — or prints a paste-ready bundle for the
+ * SQL Editor. This shim delegates to it.
+ */
+const { spawnSync } = require('node:child_process')
+const path = require('node:path')
 
-require('dotenv').config({ path: require('path').join(__dirname, '.env.local') });
+const result = spawnSync(
+  process.execPath,
+  [path.join(__dirname, 'scripts', 'apply-migrations.mjs'), ...process.argv.slice(2)],
+  { stdio: 'inherit' }
+)
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error('NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing from .env.local');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  }
-});
-
-async function runMigrations() {
-  // First, create the exec_sql function
-  const createExecSql = `
-    CREATE OR REPLACE FUNCTION exec_sql(sql text) RETURNS void
-    LANGUAGE plpgsql
-    SECURITY DEFINER
-    AS $$
-    BEGIN
-      EXECUTE sql;
-    END;
-    $$;
-    
-    GRANT EXECUTE ON FUNCTION exec_sql(text) TO postgres, anon, authenticated, service_role;
-  `;
-  
-  console.log('Creating exec_sql function...');
-  
-  // We can't run arbitrary SQL via the REST API, but we can try to create the function
-  // Let's try to use the Supabase REST API to execute a raw SQL query
-  // Actually, we can't do this via the REST API directly.
-  // We need to use the Supabase CLI or psql.
-  
-  console.log('Cannot run migrations via REST API. The exec_sql function does not exist.');
-  console.log('Please run the migrations manually in the Supabase Dashboard SQL Editor.');
-  console.log('Combined SQL file created at: combined_migrations.sql');
-}
-
-runMigrations().catch(console.error);
+process.exit(result.status ?? 1)

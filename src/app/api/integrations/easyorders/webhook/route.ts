@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { easyOrdersService } from '@/lib/easyorders/service'
 import { decryptSecret } from '@/lib/crypto'
-import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER } from '@/lib/easyorders/internal-trigger'
+import { getInternalTriggerSecret, INTERNAL_TRIGGER_HEADER, selfOrigin } from '@/lib/easyorders/internal-trigger'
 
 /**
  * POST /api/integrations/easyorders/webhook
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
 
   // Kick the background processor AFTER the response (Next.js after())
   after(async () => {
-    const origin = new URL(request.url).origin
+    const origin = selfOrigin(new URL(request.url).origin)
     await fetch(`${origin}/api/integrations/easyorders/process-queue`, {
       method: 'POST',
       headers: {
