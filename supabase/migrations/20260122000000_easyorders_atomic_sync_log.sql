@@ -117,6 +117,16 @@ $$;
 -- The row only. It does NOT update `easyorders_config` counters: those are
 -- owned by `increment_easyorders_counters`, which runs once per imported
 -- order. Adding the run totals here would count every order twice.
+-- `p_triggered_by` is declared `text`, not `uuid`, even though the column is
+-- a uuid: the application types it as `string | null` and its own test suite
+-- passes 'cron'. A uuid parameter would raise `22P02 invalid input syntax
+-- for type uuid` and the run would lose its audit row. The value is cast
+-- defensively below — a real uuid is stored, anything else becomes NULL.
+DROP FUNCTION IF EXISTS public.record_easyorders_sync_run(
+  text, text, integer, integer, integer, integer, integer,
+  integer, uuid, jsonb, timestamptz, text
+);
+
 CREATE OR REPLACE FUNCTION public.record_easyorders_sync_run(
   p_sync_type        text,
   p_status           text,
@@ -126,7 +136,7 @@ CREATE OR REPLACE FUNCTION public.record_easyorders_sync_run(
   p_orders_skipped   integer     DEFAULT 0,
   p_orders_failed    integer     DEFAULT 0,
   p_duration_ms      integer     DEFAULT 0,
-  p_triggered_by     uuid        DEFAULT NULL,
+  p_triggered_by     text        DEFAULT NULL,
   p_errors           jsonb       DEFAULT '[]'::jsonb,
   p_last_sync_at     timestamptz DEFAULT now(),
   p_sync_error       text        DEFAULT NULL
@@ -156,7 +166,14 @@ BEGIN
     GREATEST(COALESCE(p_orders_failed, 0), 0),
     COALESCE(p_errors, '[]'::jsonb),
     GREATEST(COALESCE(p_duration_ms, 0), 0),
-    p_triggered_by,
+    -- Only a syntactically valid uuid reaches the uuid column; anything
+    -- else ('cron', 'webhook', ...) is stored as NULL rather than aborting
+    -- the whole insert and losing the run's audit row.
+    CASE
+      WHEN p_triggered_by ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        THEN p_triggered_by::uuid
+      ELSE NULL
+    END,
     COALESCE(p_last_sync_at, now())
   )
   RETURNING id INTO v_log_id;
@@ -174,7 +191,7 @@ REVOKE ALL ON FUNCTION public.increment_easyorders_counters(
 
 REVOKE ALL ON FUNCTION public.record_easyorders_sync_run(
   text, text, integer, integer, integer, integer, integer,
-  integer, uuid, jsonb, timestamptz, text
+  integer, text, jsonb, timestamptz, text
 ) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.increment_easyorders_counters(
@@ -183,7 +200,7 @@ GRANT EXECUTE ON FUNCTION public.increment_easyorders_counters(
 
 GRANT EXECUTE ON FUNCTION public.record_easyorders_sync_run(
   text, text, integer, integer, integer, integer, integer,
-  integer, uuid, jsonb, timestamptz, text
+  integer, text, jsonb, timestamptz, text
 ) TO service_role;
 
 -- -----------------------------------------------------------------------------

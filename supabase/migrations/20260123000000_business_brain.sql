@@ -296,7 +296,8 @@ CREATE POLICY "app_read_business_profile" ON public.business_profile
   FOR SELECT TO authenticated
   USING (public.app_has_role('viewer'));
 
-DROP POLICY IF EXISTS "app_write_business_profile" ON public.business_profile
+DROP POLICY IF EXISTS "app_write_business_profile" ON public.business_profile;
+CREATE POLICY "app_write_business_profile" ON public.business_profile
   FOR ALL TO authenticated
   USING (public.app_has_role('admin'))
   WITH CHECK (public.app_has_role('admin'));

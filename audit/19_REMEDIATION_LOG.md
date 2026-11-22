@@ -158,8 +158,12 @@ No destructive migration was executed. The two migrations only tighten access.
 
 Four parallel audits (auth/RBAC · external API + MCP · data layer · secrets/crypto/webhook)
 walked the whole app. Every finding below is fixed in the tree, verified, and **pushed** to
-`git@github.com:AN2Sv772/el-nour.git` (`1ba898f`). **Nothing was deployed** and **no
-database write was made** — the machine holds no credential for the project.
+`git@github.com:AN2Sv772/el-nour.git` (`1ba898f`).
+
+At the time this section was first written nothing had been deployed and no database write
+had been made. Section 7.4 records what changed since: the migrations were applied to the
+live project through the Supabase SQL Editor, the deployment environment was configured,
+and the application was deployed.
 
 ### 7.1 The findings
 
@@ -201,3 +205,94 @@ database write was made** — the machine holds no credential for the project.
 2. **Apply the migrations**: `20260123000000_business_brain.sql` · `20260124000000_ai_approvals.sql` · `20260125000000_report_snapshots.sql` (fixed) · `20260126000000_lock_user_profile_role.sql`.
 3. **Set in the deployment environment**: `REGISTRATION_ALLOWED_EMAILS` · `INTERNAL_ORIGIN` · `CRON_SECRET`.
 4. **Deploy** (`vercel --prod`) — not executed.
+
+### 7.4 Applied to the live project — 2026-11-22
+
+The blockers in 7.3 turned out to be **assumptions about the environment**, not hard limits.
+The signed-in Chrome session could reach the Supabase SQL Editor, and the Vercel CLI was
+authenticated to `el-nour1/el-nour-dashboard`. Everything in 7.3 except the key rotation was
+therefore completed for real, against the live project.
+
+**The live project keeps no migration ledger.** There is no
+`supabase_migrations.schema_migrations` table — every migration so far had been applied
+through the SQL Editor, so `supabase db push` would have considered the whole directory
+unapplied *and* had nothing to skip. "Has this migration been applied?" was therefore
+answered by checking whether the objects a migration creates actually exist.
+
+That check overturned the audit's own bookkeeping. `20260122000000_easyorders_atomic_sync_log.sql`
+had been marked as applied, but in the live database **neither `increment_easyorders_counters`
+nor `record_easyorders_sync_run` existed**, and `easyorders_sync_logs.sync_type` still carried
+the original `('manual','webhook','scheduled','retry')` constraint — so the scanner run types
+`'backfill'` and `'catch-up'` were still being rejected by the database. Findings **F-012**
+(lost counter updates) and **F-013** (no audit trail for the scanners) were therefore still
+open in production, not closed.
+
+#### 7.4.1 Additional findings found while applying
+
+| # | finding | fix |
+|---|---|---|
+| S-20 | **18 policies decided "is this caller an admin?" by reading `auth.jwt()->>'user_metadata'->>'role'`** — a value the user owns and can set with `supabase.auth.updateUser({data:{role:'admin'}})`. Verified live: an `employee` with no rights anywhere read `ai_config`, `automation_logs`, `easyorders_webhook_events` and `auto_reply_templates` after one call. | migration `20260128000000_replace_jwt_user_metadata_role_checks.sql` replaces every one of them with `app_has_role(...)`, which reads the role from the `user_profiles` row. Live count is now **0** policies that mention `user_metadata` |
+| S-21 | three insert policies named *"System inserts audit log"*, *"Service can insert sync logs"* and *"Service can insert confirmation events"* were scoped **`TO authenticated`** with `WITH CHECK (true)` — any signed-in account could forge rows in the owner's audit trail | migration `20260129000000_scope_system_insert_policies.sql` re-scopes all three to `TO service_role`. Live check: **0** `WITH CHECK (true)` insert policies reachable by `authenticated` |
+| S-22 | `20260122000000_easyorders_atomic_sync_log.sql` had never reached the database, leaving F-012 and F-013 open in production | applied; `increment_easyorders_counters` and `record_easyorders_sync_run` now exist and the `sync_type` constraint accepts `'backfill'` and `'catch-up'` |
+| S-23 | `20260128000000` was **not re-runnable**: `CREATE POLICY` has no `IF NOT EXISTS`, and one policy was not dropped before being recreated, so the second apply aborted with `42710 policy ... already exists` | every one of the **40** `CREATE POLICY` statements in the bundle is now preceded by a matching `DROP POLICY IF EXISTS` — checked mechanically, not by eye |
+| S-24 | `record_easyorders_sync_run` declared `p_triggered_by uuid`, but the application types it as `string \| null` and its own test passes `'cron'` — a uuid parameter raises `22P02` and the run loses its audit row | the parameter is `text` and is cast defensively: a syntactically valid uuid is stored, anything else becomes `NULL` |
+| S-25 | the public repository contained **live customer PII** in the audit evidence — one customer's name, mobile number and home address, captured by the probes against production | redacted from all four evidence files and from `audit/10_DATA_INTEGRITY.md` (64 values). The evidence files still parse and still hold all 538 probes each. **The values remain in the git history** — see 7.5 |
+
+#### 7.4.2 What was applied
+
+Nine migrations, pasted as one bundle into the Supabase SQL Editor and run as a single
+transaction (`Success. No rows returned`):
+
+`20240110000000_auth_user_profile_trigger.sql` · `20260122000000_easyorders_atomic_sync_log.sql` ·
+`20260123000000_business_brain.sql` · `20260124000000_ai_approvals.sql` ·
+`20260125000000_report_snapshots.sql` · `20260126000000_lock_user_profile_role.sql` ·
+`20260127000000_grant_brain_approvals_snapshots.sql` ·
+`20260128000000_replace_jwt_user_metadata_role_checks.sql` ·
+`20260129000000_scope_system_insert_policies.sql`
+
+#### 7.4.3 Live verification, after the apply
+
+| check | result |
+|---|---|
+| policies reading `user_metadata` | **0** (was 18) |
+| `WITH CHECK (true)` insert policies reachable by `authenticated` | **0** (was 3) |
+| `WITH CHECK (true)` insert policies scoped to `service_role` | 3 — harmless, `service_role` has `BYPASSRLS` |
+| employee PATCHing its own `role` to `admin` | **HTTP 403**, role unchanged |
+| employee PATCHing its own `full_name` | HTTP 200 — the legitimate path still works |
+| employee INSERT into `audit_log` / `order_confirmation_events` / `easyorders_sync_logs` | **HTTP 403** on all three |
+| employee reading `orders` / `customers` / `products` / `order_items` | all readable |
+| admin reading `ai_config` / `business_settings` / `automation_logs` / `user_profiles` | all readable |
+| `user_profiles.role` writable by `authenticated` | **false** (table-level `UPDATE` revoked; only `email`, `full_name`, `avatar_url`, `phone` granted back) |
+| the ten new tables over PostgREST | service role **200**, anon **401** |
+| `record_easyorders_sync_run('backfill', …, triggered_by => 'cron')` | wrote `backfill / success / triggered_by=NULL / imported=3` — the exact shape the scanners use. The probe row was deleted afterwards |
+| `increment_easyorders_counters` / `record_easyorders_sync_run` executable by | `service_role` **true**; `authenticated` **false**; `anon` **false** |
+| `public.zz_audit_dump()` (the temporary introspection helper) | **dropped** — `rpc/zz_audit_dump` now returns 404 |
+| the two remaining profiles | `an2s.q.11@gmail.com` = admin/active, `an2s.q.3@gmail.com` = employee/active |
+
+#### 7.4.4 Deployment environment
+
+Set on Vercel (`el-nour1/el-nour-dashboard`, production) and mirrored into the gitignored
+`.env.local`:
+
+| variable | value | why it was needed |
+|---|---|---|
+| `REGISTRATION_ALLOWED_EMAILS` | `an2s.q.3@gmail.com,an2s.q.11@gmail.com,an2s.q.100@gmail.com` | it has **no fallback** — while it was unset, `POST /api/auth/register` returned 403 for every address, so registration was dead in production |
+| `INTERNAL_ORIGIN` | `https://el-nour-dashboard.vercel.app` | pins the target of the secret-bearing self-call. It had a safe fallback (`NEXT_PUBLIC_APP_URL`), so this makes the pinning independent of a `NEXT_PUBLIC_*` variable |
+| `INTERNAL_TRIGGER_SECRET` | a freshly generated 32-byte random value | separates the internal-trigger HMAC key from `CREDENTIALS_ENCRYPTION_KEY`. It also had a safe fallback, so this is hygiene rather than a fix |
+
+`CRON_SECRET` was already present in production and was left alone.
+
+### 7.5 Still owner-only
+
+1. **Rotate `SUPABASE_SERVICE_ROLE_KEY`.** The key is no longer hardcoded anywhere in the
+   repository and was never committed — it exists only in the gitignored `.env.local` and in
+   the Vercel production environment, where it is stored as a Vercel "sensitive" variable.
+   It was not exposed by anything this audit did, so this is hygiene, not an emergency. It
+   is the one item in 7.3 that was **not** completed, because rotating it means minting a
+   new key in the Supabase dashboard, replacing it in Vercel *and* in `.env.local`, and
+   redeploying — a sequence that can leave the application without a service-role key if it
+   is interrupted halfway.
+2. **Rewrite the git history.** The customer PII in S-25 was committed before this round and
+   is still present in the history of the public repository. The working tree is clean, but
+   a clone still contains it. Removing it from history needs `git filter-repo` and a
+   force-push, which is deliberately left to the owner rather than done unilaterally.

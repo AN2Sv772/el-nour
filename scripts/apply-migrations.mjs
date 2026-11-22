@@ -42,10 +42,40 @@ const ROOT = path.resolve(__dirname, '..')
 const MIGRATIONS_DIR = path.join(ROOT, 'supabase', 'migrations')
 
 const PROJECT_REF = process.env.SUPABASE_PROJECT_REF || 'lyswmlmrlviptprhfiph'
+
+/**
+ * The SQL that still has to reach the database, in the order it must run.
+ *
+ * The first entry is a RE-APPLY: `20240110000000_auth_user_profile_trigger.sql`
+ * is already recorded as applied, so `supabase db push` would skip it — but
+ * the trigger it creates has since been changed to mint an inactive `viewer`
+ * instead of an active `employee`. The SQL Editor has no migration history,
+ * so the paste-ready bundle includes it.
+ *
+ * `20260122000000_easyorders_atomic_sync_log.sql` was found NOT to be applied
+ * to the live project by the object-level inventory on 2026-11-22: neither
+ * `increment_easyorders_counters` nor `record_easyorders_sync_run` existed,
+ * and `easyorders_sync_logs.sync_type` still carried the original
+ * `('manual','webhook','scheduled','retry')` constraint — so the scanner run
+ * types ('backfill', 'catch-up') were still being rejected by the database.
+ * That is finding F-012 (lost counter updates) and F-013 (no audit trail for
+ * the scanners), and it is the reason this file is in the list.
+ *
+ * NOTE: the live project has NO `supabase_migrations.schema_migrations`
+ * ledger — every migration so far was applied through the SQL Editor, so
+ * there is no history to consult. "Is it applied?" is therefore answered by
+ * checking whether the objects a migration creates actually exist.
+ */
 const PENDING = [
+  '20240110000000_auth_user_profile_trigger.sql',
+  '20260122000000_easyorders_atomic_sync_log.sql',
   '20260123000000_business_brain.sql',
   '20260124000000_ai_approvals.sql',
   '20260125000000_report_snapshots.sql',
+  '20260126000000_lock_user_profile_role.sql',
+  '20260127000000_grant_brain_approvals_snapshots.sql',
+  '20260128000000_replace_jwt_user_metadata_role_checks.sql',
+  '20260129000000_scope_system_insert_policies.sql',
 ]
 
 /** Tables each migration creates — used to verify the result. */
@@ -61,6 +91,17 @@ const EXPECTED_TABLES = {
   ],
   '20260124000000_ai_approvals.sql': ['ai_approvals', 'ai_execution_logs'],
   '20260125000000_report_snapshots.sql': ['report_snapshots'],
+}
+
+/**
+ * Functions each migration creates — the real "was it applied?" probe, because
+ * the live project keeps no migration ledger.
+ */
+const EXPECTED_FUNCTIONS = {
+  '20260122000000_easyorders_atomic_sync_log.sql': [
+    'increment_easyorders_counters',
+    'record_easyorders_sync_run',
+  ],
 }
 
 async function readMigration(name) {

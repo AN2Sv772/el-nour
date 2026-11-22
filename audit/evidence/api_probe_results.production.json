@@ -178,7 +178,7 @@
     "total",
     "totalPages"
    ],
-   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+201117114083\",\"name\":\"Alaa Moshen\",\"email\":null,\"address\":\"ألف مسكن 15احمد اسماعيل سيد ابو النجا \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
+   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+20XXXXXXXXX\",\"name\":\"REDACTED_CUSTOMER_NAME\",\"email\":null,\"address\":\"REDACTED_CUSTOMER_ADDRESS \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
    "headers": {
     "Content-Type": "application/json",
     "X-Ratelimit-Limit": "100",
@@ -201,7 +201,7 @@
     "total",
     "totalPages"
    ],
-   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+201117114083\",\"name\":\"Alaa Moshen\",\"email\":null,\"address\":\"ألف مسكن 15احمد اسماعيل سيد ابو النجا \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
+   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+20XXXXXXXXX\",\"name\":\"REDACTED_CUSTOMER_NAME\",\"email\":null,\"address\":\"REDACTED_CUSTOMER_ADDRESS \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
    "headers": {
     "Content-Type": "application/json",
     "X-Ratelimit-Limit": "100",
@@ -224,7 +224,7 @@
     "total",
     "totalPages"
    ],
-   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+201117114083\",\"name\":\"Alaa Moshen\",\"email\":null,\"address\":\"ألف مسكن 15احمد اسماعيل سيد ابو النجا \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
+   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+20XXXXXXXXX\",\"name\":\"REDACTED_CUSTOMER_NAME\",\"email\":null,\"address\":\"REDACTED_CUSTOMER_ADDRESS \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
    "headers": {
     "Content-Type": "application/json",
     "X-Ratelimit-Limit": "100",
@@ -376,7 +376,7 @@
     "total",
     "totalPages"
    ],
-   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+201117114083\",\"name\":\"Alaa Moshen\",\"email\":null,\"address\":\"ألف مسكن 15احمد اسماعيل سيد ابو النجا \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
+   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+20XXXXXXXXX\",\"name\":\"REDACTED_CUSTOMER_NAME\",\"email\":null,\"address\":\"REDACTED_CUSTOMER_ADDRESS \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
    "headers": {
     "Content-Type": "application/json",
     "X-Ratelimit-Limit": "100",
@@ -399,7 +399,7 @@
     "total",
     "totalPages"
    ],
-   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+201117114083\",\"name\":\"Alaa Moshen\",\"email\":null,\"address\":\"ألف مسكن 15احمد اسماعيل سيد ابو النجا \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
+   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+20XXXXXXXXX\",\"name\":\"REDACTED_CUSTOMER_NAME\",\"email\":null,\"address\":\"REDACTED_CUSTOMER_ADDRESS \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
    "headers": {
     "Content-Type": "application/json",
     "X-Ratelimit-Limit": "100",
@@ -422,7 +422,7 @@
     "total",
     "totalPages"
    ],
-   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+201117114083\",\"name\":\"Alaa Moshen\",\"email\":null,\"address\":\"ألف مسكن 15احمد اسماعيل سيد ابو النجا \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
+   "body": "{\"data\":[{\"id\":\"b586c524-34a8-413c-ab27-fd46595ee594\",\"phone\":\"+20XXXXXXXXX\",\"name\":\"REDACTED_CUSTOMER_NAME\",\"email\":null,\"address\":\"REDACTED_CUSTOMER_ADDRESS \",\"governorate\":\"\",\"city\":\"\",\"tags\":[],\"notes\":null,\"total_spent\":580,\"total_orders\":1,\"last_interaction_at\":\"2026-11-20T17:27:44.017732+00:00\",\"created_at\":\"2026-11-20T17:27:43.527287+00:00\",\"updated_at\":\"2026-11-20T17:27:44.017732+00:00\"",
    "headers": {
     "Content-Type": "application/json",
     "X-Ratelimit-Limit": "100",

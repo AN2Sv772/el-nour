@@ -61,7 +61,7 @@ Order status distribution: `pending` 1 977 · `confirmed` 46 · all other states
 
 ### DB-04 — one order without a line item
 
-`EO-261120-19N8KU` (580 EGP, 2 × "مساحة ارضيات ببخاش", customer "Alaa Moshen",
+`EO-261120-19N8KU` (580 EGP, 2 × "مساحة ارضيات ببخاش", customer "REDACTED_CUSTOMER_NAME",
 `source = easyorders`, `easyorders_order_id = 7ef8a2cd-…`) stores its line items **inside
 the `items` JSON column** of the order row, while the other 2 022 orders use the
 `order_items` table. The order is complete — the two storage models simply coexist.

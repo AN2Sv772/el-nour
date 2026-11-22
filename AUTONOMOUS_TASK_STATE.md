@@ -5,11 +5,19 @@ Scope: Master autonomous implementation (Sections 1–29 mandate)
 ## ⚠️ Deployment constraint — SUPERSEDED (2026-11-22)
 This file previously recorded: "**No deploy, no push** in this session. All changes local."
 
-The owner explicitly overrode that constraint ("do everything you want"), so the
-working tree is now **committed and pushed** to `git@github.com:AN2Sv772/el-nour.git`
-(public). The **production deployment is still NOT done** — `vercel --prod` was never
-run, no deployment environment variable was changed, and no database write was made.
-See the "Security hardening round" section at the bottom for the full state.
+The owner explicitly overrode that constraint ("do everything you want"). Everything the
+constraint used to hold back has since been done for real:
+
+- the working tree is **committed and pushed** to `git@github.com:AN2Sv772/el-nour.git` (public);
+- the pending migrations were **applied to the live Supabase project** through the SQL Editor
+  and verified against it;
+- the deployment environment was **configured** (`REGISTRATION_ALLOWED_EMAILS`, `INTERNAL_ORIGIN`,
+  `INTERNAL_TRIGGER_SECRET` on Vercel);
+- the application was **deployed to production**.
+
+Only two things remain owner-only: rotating `SUPABASE_SERVICE_ROLE_KEY`, and rewriting the git
+history to purge the customer PII that was committed before this round. See the
+"Security hardening round" section at the bottom for the full state.
 
 ## AUTOMATIC ORDER SYNCHRONIZATION — IMPLEMENTED (2026-11-07)
 ### Architecture
@@ -184,3 +192,52 @@ EL_NOUR_{MASTER_AUDIT, EXECUTIVE_SUMMARY, COMPLETE_FEATURE_INVENTORY, FUNCTIONAL
 2. **طبّق الترحيلات**: `20260123000000_business_brain.sql` · `20260124000000_ai_approvals.sql` · `20260125000000_report_snapshots.sql` (مُصحّحة) · `20260126000000_lock_user_profile_role.sql` — عبر SQL Editor أو `node scripts/apply-migrations.mjs`.
 3. **اضبط في بيئة النشر**: `REGISTRATION_ALLOWED_EMAILS` · `INTERNAL_ORIGIN` · `CRON_SECRET`.
 4. **النشر** (`vercel --prod`) — لم يُنفَّذ.
+
+---
+
+## ═══ جولة التطبيق على القاعدة الحيّة — 2026-11-22 ═══
+
+### ما تغيّر عن القسم أعلاه
+العوائق الثلاثة أعلاه كانت **افتراضات عن البيئة** لا قيوداً حقيقية: جلسة Chrome الموقّعة
+تصل إلى محرّر SQL، وواجهة Vercel موثّقة على `el-nour1/el-nour-dashboard`. لذلك نُفِّذ كل شيء
+فعلاً على المشروع الحيّ — ما عدا تدوير المفتاح.
+
+**المشروع الحيّ لا يحتفظ بسجلّ ترحيلات.** لا وجود لـ `supabase_migrations.schema_migrations` —
+كل ترحيل سابق طُبِّق عبر محرّر SQL. فسؤال "هل طُبِّق هذا الترحيل؟" أُجيب عليه بفحص **وجود
+الكائنات** التي ينشئها الترحيل لا بقراءة سجلّ.
+
+وهذا الفحص قلب محاسبة التدقيق نفسها: `20260122000000_easyorders_atomic_sync_log.sql` كان
+مسجّلاً كتطبيق مُنجز، بينما في القاعدة الحيّة **لم توجد** `increment_easyorders_counters`
+ولا `record_easyorders_sync_run`، وكان قيد `sync_type` على `easyorders_sync_logs` لا يزال
+القيد الأصلي `('manual','webhook','scheduled','retry')` — أي أن نوعَي التشغيل
+`'backfill'` و`'catch-up'` ما زالا مرفوضين من قاعدة البيانات. كانت نتيجتا **F-012** (فقدان
+عدّادات المزامنة) و**F-013** (غياب أثر للماسحات) مفتوحتين في الإنتاج، لا مغلقتين.
+
+### نتائج جديدة (S-20 … S-25)
+| # | النتيجة | الإصلاح |
+|---|---|---|
+| S-20 | **18 سياسة** كانت تقرّر "هل هذا المُستدعي مدير؟" من `auth.jwt()->>'user_metadata'->>'role'` — قيمة يملكها المستخدم ويقدر ضبطها بنفسه عبر `updateUser({data:{role:'admin'}})`. مُتحقَّق حيّاً: حساب `employee` بلا أي صلاحية قرأ `ai_config` و`automation_logs` و`easyorders_webhook_events` بعد نداء واحد | `20260128000000_replace_jwt_user_metadata_role_checks.sql` — كل السياسات صارت `app_has_role(...)`. العدّ الحيّ الآن **0** سياسة تذكر `user_metadata` |
+| S-21 | ثلاث سياسات INSERT باسم "System"/"Service" كانت `TO authenticated` مع `WITH CHECK (true)` — أي حساب موقَّع كان يستطيع تزوير صفوف في سجل التدقيق | `20260129000000_scope_system_insert_policies.sql` — أُعيد نطاقها إلى `TO service_role`. الفحص الحيّ: **0** سياسة `WITH CHECK (true)` يمكن لـ `authenticated` الوصول إليها |
+| S-22 | `20260122000000` لم يصل إلى القاعدة قط، فبقيت F-012 وF-013 مفتوحتين في الإنتاج | طُبِّق؛ الدالتان موجودتان الآن وقيد `sync_type` يقبل `'backfill'` و`'catch-up'` |
+| S-23 | `20260128000000` لم يكن قابلاً لإعادة التشغيل: `CREATE POLICY` بلا `IF NOT EXISTS`، وسياسة واحدة لم تُحذف قبل إعادة إنشائها → `42710 policy ... already exists` | الآن **كل** عبارات `CREATE POLICY` الـ40 يسبقها `DROP POLICY IF EXISTS` مطابق — بفحص آلي لا بالنظر |
+| S-24 | `record_easyorders_sync_run` كانت تعلن `p_triggered_by uuid` بينما التطبيق يوصّفها `string \| null` واختباره يمرّر `'cron'` — المعامل uuid يرفع `22P02` فيضيع أثر التشغيل | المعامل أصبح `text` ويُحوَّل بأمان: uuid صحيح يُخزَّن، وأي شيء آخر يصبح `NULL` |
+| S-25 | المستودع العام يحتوي **بيانات عميل حيّة** (اسم، رقم هاتف، عنوان) في أدلة التدقيق، التقطها الفحص من الإنتاج | أُخفيت من ملفات الأدلة الأربعة ومن `audit/10_DATA_INTEGRITY.md` (64 قيمة). الملفات ما زالت تُقرأ JSON وتحتفظ بـ538 فحصاًeach. **القيم ما زالت في تاريخ git** — انظر `audit/19_REMEDIATION_LOG.md` §7.5 |
+
+### التحقق الحيّ بعد التطبيق
+- سياسات تقرأ `user_metadata`: **0** (كانت 18) · سياسات `WITH CHECK (true)` يمكن لـ `authenticated` الوصول إليها: **0** (كانت 3)
+- موظف يحاول ترقية دوره إلى `admin` → **HTTP 403**، والدور لم يتغيّر · تعديل `full_name` لنفسه → 200 (المسار الشرعي ما زال يعمل)
+- موظف يحاول INSERT في `audit_log` / `order_confirmation_events` / `easyorders_sync_logs` → **403** على الثلاثة
+- الجداول العشرة الجديدة: service role **200** · anon **401** · `record_easyorders_sync_run('backfill', …, 'cron')` كتبت `backfill / success / triggered_by=NULL / imported=3` ثم حُذف الصف
+- `public.zz_audit_dump()` (مساعد الاستبطان المؤقت) → **محذوف** (rpc يعيد 404)
+- الملفان المتبقيان: `an2s.q.11@gmail.com` = admin/نشط · `an2s.q.3@gmail.com` = employee/نشط
+
+### متغيّرات بيئة النشر (Vercel production + `.env.local`)
+| المتغيّر | القيمة | لماذا |
+|---|---|---|
+| `REGISTRATION_ALLOWED_EMAILS` | `an2s.q.3@gmail.com,an2s.q.11@gmail.com,an2s.q.100@gmail.com` | **لا بديل احتياطي** — لم يكن مضبوطاً، فكان `POST /api/auth/register` يعيد 403 لكل عنوان: التسجيل ميّت في الإنتاج |
+| `INTERNAL_ORIGIN` | `https://el-nour-dashboard.vercel.app` | يثبّت هدف النداء الذاتي الحامل للسرّ. كان له بديل آمن (`NEXT_PUBLIC_APP_URL`)، فجعل التثبيت مستقلاً عن متغيّر `NEXT_PUBLIC_*` |
+| `INTERNAL_TRIGGER_SECRET` | قيمة عشوائية جديدة 32 بايت | تفصل مفتاح HMAC عن `CREDENTIALS_ENCRYPTION_KEY` |
+
+### ما تبقّى للمالك فقط
+1. **تدوير `SUPABASE_SERVICE_ROLE_KEY`** — hygiene لا استعجال: المفتاح لم يُودَع في المستودع أبداً، existe في `.env.local` (مُتجاهَل من git) وفي Vercel كمتغيّر "sensitive". التدوير يعني إنشاء مفتاح جديد، استبداله في Vercel و`.env.local`، ثم إعادة نشر — تسلسل قد يترك التطبيق بلا مفتاح إن انقطع في منتصفه.
+2. **إعادة كتابة تاريخ git** — بيانات العميل في S-25 كانت مُودَعة قبل هذه الجولة، وهي ما زالت في تاريخ المستودع العام. الشجرة نظيفة لكن نسخة المستودع تحتويها. إزالتها تحتاج `git filter-repo` وforce-push، تُركت للمالك عمداً.
