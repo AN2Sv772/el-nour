@@ -151,3 +151,53 @@ No destructive migration was executed. The two migrations only tighten access.
 | the 18 `webhook_rejected` probe rows in `automation_logs` | deleted |
 | `audit_log` (6 rows describing the audit's own actions) | **kept** — the database forbids deleting them (`42501`), which is the correct behaviour |
 | the local dev server (PID 44131) | stopped at the end of the session |
+
+---
+
+## 7. Security hardening round — 2026-11-22
+
+Four parallel audits (auth/RBAC · external API + MCP · data layer · secrets/crypto/webhook)
+walked the whole app. Every finding below is fixed in the tree, verified, and **pushed** to
+`git@github.com:AN2Sv772/el-nour.git` (`1ba898f`). **Nothing was deployed** and **no
+database write was made** — the machine holds no credential for the project.
+
+### 7.1 The findings
+
+| # | finding | fix |
+|---|---|---|
+| S-01 | `getUserRole` fell back to a default role when the profile row was missing, inactive, unreadable, or carried an unknown role — a read error became **access** | `getUserRole` returns `AppRole \| null`; `requireRole` denies with **403** |
+| S-02 | `POST /api/auth/register` minted an **active `employee`** account for anybody who posted to it — create orders, edit prices, adjust stock, export every customer's name, phone and address | allow-list only (`REGISTRATION_ALLOWED_EMAILS`); unset = closed (403); new accounts start `viewer` + inactive |
+| S-03 | `handle_new_user` (DB trigger) minted the same active `employee` row, so the hole survived a server-side fix alone | the trigger now mints `viewer` + `is_active = false` |
+| S-04 | the `user_profiles` self-update policy let a signed-in account write `{"role":"admin"}` to its OWN row with the public anon key | new migration `20260126000000_lock_user_profile_role.sql`: a pinned self-update policy + `REVOKE UPDATE (role, is_active)` |
+| S-05 | `GET /api/products` passed the search term and sort column into a PostgREST `.or()` filter — **filter injection** | column allow-list, sanitised + quoted filter, UUID validation, bounded sort/page params |
+| S-06 | `run_migrations_final.js` carried a paste-ready template for an `exec_sql(sql text)` helper — `SECURITY DEFINER` + `GRANT` to `anon` | template removed; all three legacy scripts delegate to `scripts/apply-migrations.mjs`; the dead `exec_sql` caller in `scripts/verify-sync-counters.cjs` removed |
+| S-07 | `20260125000000_report_snapshots.sql` called the two-argument `app_has_role(auth.uid(), text[])`; the live schema only has `app_has_role(minimum text)` — the SQL Editor wraps the file in one transaction, so the whole table would have rolled back | the one-argument form |
+| S-08 | the `report_snapshots` trigger overwrote `created_at` on UPDATE, destroying the timestamp that makes a snapshot an immutable record | `created_at` is immutable; a new `updated_at` column + trigger |
+| S-09 | order line totals were **taken from the client** — an order could store a 500 EGP item with a line total of 1 EGP, and every report inherits the error | totals are derived server-side (`round2`); the order discount is capped at the subtotal |
+| S-10 | raw driver errors were returned to the client (`/api/v1/metrics`, `/api/v1/decisions`) | generic message + a UUID `reference` |
+| S-11 | the Gemini API key travelled in the URL query — it lands in every proxy log and access log | moved to the `x-goog-api-key` header |
+| S-12 | the client IP was read from the **first** `x-forwarded-for` entry, which the client controls — the rate limiter was bypassable | the proxy headers are preferred and the **last** `x-forwarded-for` entry is used |
+| S-13 | `redirectTo` accepted `//evil.example` — an open redirect | it must start with a single `/` |
+| S-14 | CSV export wrote cells starting with `=`, `+`, `-` or `@` unescaped — formula injection into the owner's spreadsheet | neutralised for string cells |
+| S-15 | placeholder/short API and encryption keys were accepted | rejected at startup, with a minimum length |
+| S-16 | cron secrets were compared with `===` | timing-safe comparison, plus a pinned self-origin (`INTERNAL_ORIGIN`) instead of trusting the inbound `Host` |
+| S-17 | `POST /api/inventory/adjust` accepted a fractional quantity and could overwrite a concurrent stock update | integer ≤ 1,000,000 + optimistic concurrency (409 on conflict, compensating delete) |
+| S-18 | role gates were missing or too low: `reconciliation` (POST/PUT), `order-confirmation` (PUT), `brain/knowledge` (forgotten), `ai/chat` (a viewer creating approval proposals) | raised to manager+; the viewer path is closed |
+| S-19 | `/api/mcp` accepted an unbounded batch | capped at 20 messages |
+
+### 7.2 Verification
+
+| check | result |
+|---|---|
+| `npx tsc --noEmit` | ✅ clean |
+| `npm test` | ✅ **458/458** (38 files) |
+| `npm run build` | ✅ **91 routes** |
+| `npm run test:e2e` | ✅ **36 passed / 1 skipped** — the skip is the MCP test: no `REPORTS_API_KEY` is set, which is the correct fail-closed contract |
+| fresh clone of the pushed repo | ✅ 456 tracked files, identical to the source; secret scan clean; `.env.local` / `.agents` / `dev.log` / `shots/storage-state.json` absent |
+
+### 7.3 Still owner-only — no credential for it exists on this machine
+
+1. **Rotate `SUPABASE_SERVICE_ROLE_KEY`** — it was hardcoded in 4 files. The code is clean; the old key is still live.
+2. **Apply the migrations**: `20260123000000_business_brain.sql` · `20260124000000_ai_approvals.sql` · `20260125000000_report_snapshots.sql` (fixed) · `20260126000000_lock_user_profile_role.sql`.
+3. **Set in the deployment environment**: `REGISTRATION_ALLOWED_EMAILS` · `INTERNAL_ORIGIN` · `CRON_SECRET`.
+4. **Deploy** (`vercel --prod`) — not executed.

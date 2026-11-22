@@ -38,16 +38,6 @@ const env = loadEnv()
 const URL = env.NEXT_PUBLIC_SUPABASE_URL
 const KEY = env.SUPABASE_SERVICE_ROLE_KEY
 
-async function rpc(sql) {
-  const res = await fetch(URL + '/rest/v1/rpc/' + encodeURIComponent('exec_sql'), {
-    method: 'POST',
-    headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sql }),
-  })
-  const text = await res.text()
-  return { status: res.status, text }
-}
-
 async function rest(pathname, extraHeaders = {}) {
   const res = await fetch(URL + '/rest/v1/' + pathname, {
     headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, ...extraHeaders },
