@@ -214,3 +214,29 @@ transaction (`Success. No rows returned`):
 **Still owner-only:** rotate `SUPABASE_SERVICE_ROLE_KEY` (the key was never committed — it
 lives only in the gitignored `.env.local` and in Vercel as a "sensitive" variable, so this is
 hygiene rather than an emergency), and rewrite the git history to purge the S-25 PII.
+
+---
+
+## Deployed to production — 2026-11-22
+
+`vercel --prod` → `el-nour-dashboard-pf374o6s7-el-nour1.vercel.app`, promoted to the production
+alias `https://el-nour-dashboard.vercel.app`. Build 1 m 24 s, billable 2 m, status **Ready**.
+
+| check against the live deployment | result |
+|---|---|
+| `GET /` anonymous | **307** → login; `/login` and `/register` **200** |
+| unauthenticated API reads and writes | **401** on all six probes |
+| `POST /api/auth/register`, address not on the allow-list | **403** |
+| `POST /api/auth/register`, allow-listed address that already has an account | **409** *already registered* — the allow-list let it through |
+| `POST /api/auth/register`, allow-listed address with no account | **200** — created as `employee` + active (the route is the authority for allow-listed addresses, not the trigger). **The verification account was deleted immediately afterwards** so the owner registers it with their own password |
+| admin session, seven endpoints including `/api/brain/status` | **200** on all seven; `available: true`, so the ten new tables are live |
+| employee session, three read endpoints | **200** |
+| employee `POST /api/reconciliation` / `PUT /api/brain/profile` / `POST /api/ai/approvals/[id]` | **403** on all three — manager+, admin, admin |
+| the same three writes as admin | **400** (validation), not 403 — the difference is the role gate |
+| cron routes without a cookie | **401** on both |
+| runtime logs | the Hobby plan retains only 30 minutes, so the window has rolled over; the functional checks are the evidence |
+| final database state | 2 auth users, 2 profiles — admin/active and employee/active |
+
+The role split matches the database contract: *read: viewer, propose: employee, decide: admin*
+for the AI queue; *read: viewer, write: manager* for reconciliation; *read: viewer, write: admin*
+for the business-brain profile.

@@ -282,6 +282,34 @@ Set on Vercel (`el-nour1/el-nour-dashboard`, production) and mirrored into the g
 
 `CRON_SECRET` was already present in production and was left alone.
 
+### 7.4.5 Deployed to production
+
+`vercel --prod` → deployment `el-nour-dashboard-pf374o6s7-el-nour1.vercel.app`, promoted to the
+production alias `https://el-nour-dashboard.vercel.app`. Build 1 m 24 s, billable 2 m, status
+**Ready**.
+
+| check against the live deployment | result |
+|---|---|
+| `GET /` (anonymous) | **307** → the login page; `GET /login` and `GET /register` are **200** |
+| unauthenticated `GET /api/orders` `/api/customers` `/api/products` `/api/brain/status` `/api/ai/approvals` | **401** on all five |
+| unauthenticated `POST /api/orders` | **401** |
+| `POST /api/auth/register` with an address that is **not** on the allow-list | **403** — `هذا البريد الإلكتروني غير مُصرّح له بالتسجيل` |
+| `POST /api/auth/register` with an allow-listed address that already has an account | **409** — *already registered*, i.e. the allow-list let it past the 403 |
+| `POST /api/auth/register` with an allow-listed address that has none | **200** — the account was created as `employee` + active, because the route (not the trigger) is the authority for an allow-listed address. **The verification account was deleted immediately afterwards**, so the owner registers it themselves with their own password |
+| admin session: `/api/orders` `/api/customers` `/api/products` `/api/integrations/easyorders` `/api/brain/status` `/api/ai/approvals` `/api/overview` | **200** on all seven. `/api/brain/status` reports `available: true`, so the ten new tables really are live |
+| employee session: `/api/orders` `/api/customers` `/api/products` | **200** |
+| employee `POST /api/reconciliation` | **403** (the gate is manager+) |
+| employee `PUT /api/brain/profile` | **403** (the gate is admin) |
+| employee `POST /api/ai/approvals/[id]` | **403** (the gate is admin) |
+| the same three writes as **admin** | **400** with a validation message, not 403 — the difference is the role gate, not the payload |
+| `GET /api/cron/report-snapshot` and `GET /api/integrations/easyorders/process-queue` without a cookie | **401** on both |
+| runtime logs | the Hobby plan retains only the last 30 minutes, so the verification window is no longer queryable; the functional checks above are the evidence |
+| final database state | 2 auth users and 2 `user_profiles` rows — `an2s.q.11@gmail.com` = admin/active, `an2s.q.3@gmail.com` = employee/active |
+
+The role split in production matches the contract the database enforces: *read: viewer, propose:
+employee, decide: admin* for the AI queue, *read: viewer, write: manager* for reconciliation, and
+*read: viewer, write: admin* for the business-brain profile.
+
 ### 7.5 Still owner-only
 
 1. **Rotate `SUPABASE_SERVICE_ROLE_KEY`.** The key is no longer hardcoded anywhere in the
