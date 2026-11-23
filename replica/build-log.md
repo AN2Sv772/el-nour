@@ -240,3 +240,70 @@ alias `https://el-nour-dashboard.vercel.app`. Build 1 m 24 s, billable 2 m, stat
 The role split matches the database contract: *read: viewer, propose: employee, decide: admin*
 for the AI queue; *read: viewer, write: manager* for reconciliation; *read: viewer, write: admin*
 for the business-brain profile.
+
+---
+
+## Independent closure re-audit — 2026-11-23
+
+A second, independent pass re-derived every conclusion from the live database
+and the live deployment instead of trusting the previous round. Full report:
+`audit/21_SECURITY_CLOSURE_REPORT.md`. Executable plans:
+`audit/20_REMEDIATION_PLANS.md`.
+
+### What the second pass found that the first pass did not
+
+| finding | severity | evidence |
+|---|---|---|
+| `create_order_atomic(...)` — `SECURITY DEFINER`, no authz, **reachable by anon** | **CRITICAL** | the call reached the function body and raised inside `jsonb_array_elements` instead of being refused at a permission check. No data written — the malformed payload raises before the first INSERT, and the probe was re-verified afterwards (0 sentinel orders, 0 orders created on the probe date) |
+| `get_or_create_easyorders_config()` — returns the `api_key` ciphertext to anon | **HIGH** | HTTP 200, one row. Bypasses the `easyorders_config` table lockdown (ACL is `postgres, service_role` only). 0 application call sites |
+| `cleanup_expired_otp_codes()` / `cleanup_old_easyorders_webhook_events()` — anon-executed DELETEs | **MEDIUM** | both HTTP 204. `otp_codes` is empty; the 2 webhook-event rows are 17 days old against a 30-day predicate, so **nothing was deleted** (re-read and confirmed) |
+| `current_profile_is_active(uuid)` — profile-existence oracle | **MEDIUM** | `true` for a known UUID, `null` for a random one |
+| `"Employees can create webhook events"` — unused authenticated INSERT into the webhook queue | **MEDIUM** | the app inserts via the service client, so the grant has no legitimate use. Not a privilege escalation — `PATCH /api/orders/[id]` is already employee-gated |
+| `.env.example` published a stale EasyOrders credential | **MEDIUM** | **the live key was never in git**: the published value is 23 bytes, the live DB credential decrypts to 36 bytes, and EasyOrders answers `Api-Key not valid` (byte-identical to a wrong control key). Removed from HEAD in `5ff3fae`, pushed, remote head verified |
+
+### The fix — dry-run verified on production, then rolled back
+
+`supabase/migrations/20260130000000_lock_public_function_execute.sql`
+
+```
+V1_counts = anon_exec=0 | auth_exec=3 | svc_exec=24 | total=24
+V2_authenticated_still_holds = app_has_role, app_role_rank, current_profile_is_active
+V3_leftover_policy = 0
+```
+
+Run inside an explicit transaction that was **rolled back**; a post-rollback
+re-probe confirmed production is unchanged. The functional guard
+`set local role authenticated; select count(*) from orders;` succeeded, so the
+RLS policies still evaluate. Revoking the 8 trigger functions is safe —
+verified empirically that a revoked trigger function still fires for a
+non-owner role (PostgreSQL checks EXECUTE at `CREATE TRIGGER`, not at fire
+time).
+
+**NOT APPLIED** — it is a production database write and needs the owner's
+approval.
+
+### Regression re-run
+
+| suite | command | result |
+|---|---|---|
+| TypeScript | `npx tsc --noEmit` | **exit 0** |
+| Unit | `npm test` | **458 passed / 458**, 38 files, 27.19 s |
+| Build | `npm run build` | **exit 0**, compiled 23.2 s, 27 static pages |
+| E2E | `npm run test:e2e` | **36 passed, 1 skipped**, 2.9 m, **exit 0** |
+
+### Git-history scan (12 commits, 133 155 patch lines)
+
+`sb_secret_*` **0** · JWT **0** · private key **0** · live
+`SUPABASE_SERVICE_ROLE_KEY` exact match **0** · live key in any built
+artefact **0 files** · `'use client'` module importing the service client
+**0** · 6 phone-shaped and 24 email-shaped values, of which **0 of 6** and
+**0 of 24** match any of the **1 935** live customers · only `.env.example`
+among sensitive filenames.
+
+### Production re-verification
+
+Anonymous → 9 endpoints **401** · off-allow-list registration **403** ·
+allow-listed + existing **409** (no account created) · admin 9 reads **200**,
+admin writes **400** (role passed, validation rejected) · employee 5 reads
+**200**, 4 privileged writes **403** · service-role key as a session cookie
+**401**.

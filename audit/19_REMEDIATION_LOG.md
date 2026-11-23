@@ -349,3 +349,100 @@ in code — the three textual hits are the comments that explain why the templat
    is still present in the history of the public repository. The working tree is clean, but
    a clone still contains it. Removing it from history needs `git filter-repo` and a
    force-push, which is deliberately left to the owner rather than done unilaterally.
+
+---
+
+## 8. Independent closure re-audit (2026-11-23) — second opinion, nothing assumed
+
+This round re-derived every conclusion from the live database and the live
+deployment. No previous finding was taken as fixed. Full evidence:
+`audit/21_SECURITY_CLOSURE_REPORT.md`; the executable plans:
+`audit/20_REMEDIATION_PLANS.md`.
+
+### 8.1 New findings (S-26 … S-31)
+
+| # | Severity | Finding | Status |
+|---|---|---|---|
+| **S-26** | **CRITICAL** | `public.create_order_atomic(...)` is `SECURITY DEFINER` with **no internal authorization check** and was **reachable by `anon`**. Reproduced: the call reached the function body and raised inside `jsonb_array_elements` instead of being refused at a permission check. It inserts into `orders`, `order_items` and `automation_logs`. **0 application call sites.** No data was written by the probe (the malformed payload raises before the first INSERT; verified: 0 orders with the sentinel `customer_id`, 0 orders created on the probe date) | **Open — closed by `20260130000000`, pending approval** |
+| **S-27** | **HIGH** | `public.get_or_create_easyorders_config()` is `SECURITY DEFINER`, returns the `api_key` column, and was **reachable by `anon`**: HTTP 200 with the `v1:` ciphertext. It bypasses the `easyorders_config` table lockdown (that table's ACL is `postgres, service_role` only). **0 application call sites** | **Open — closed by `20260130000000`, pending approval** |
+| **S-28** | **MEDIUM** | `cleanup_expired_otp_codes()` and `cleanup_old_easyorders_webhook_events()` are `SECURITY DEFINER` DELETEs and **executed for `anon`** (HTTP 204). `otp_codes` is empty; the 2 webhook-event rows are 17 days old and the predicate is `> 30 days`, so **nothing was deleted** (re-read and confirmed) | **Open — closed by `20260130000000`, pending approval** |
+| **S-29** | **MEDIUM** | `current_profile_is_active(uuid)` is an unauthenticated profile-existence oracle (`true` for a known UUID, `null` for a random one). **0 application call sites** | **Open — closed by `20260130000000`, pending approval** |
+| **S-30** | **MEDIUM** | `"Employees can create webhook events"` (INSERT, `authenticated`) has **no legitimate use** — the application inserts through the service client. It let an employee plant payloads the manager/cron-gated queue executes through the real import pipeline. **Not** a privilege escalation: `PATCH /api/orders/[id]` is already `employee`-gated | **Open — closed by `20260130000000`, pending approval** |
+| **S-31** | **MEDIUM** | `.env.example` at HEAD published a stale `EASYORDERS_API_KEY` + `EASYORDERS_STORE_ID`. **Severity reduced by evidence:** the published value is 23 bytes, the live DB credential decrypts to 36 bytes → different values; EasyOrders answers `Api-Key not valid` (byte-identical to a wrong control key); the live key demonstrably works (the audited backfill imported 3 live orders). **The live EasyOrders key was never in git.** Removed from HEAD in commit `5ff3fae`, pushed, remote head verified | **Fixed in HEAD**; history purge optional (Plan A) |
+
+### 8.2 Confirmed fixed (re-verified, not assumed)
+
+0 policies read `user_metadata` · 0 `WITH CHECK (true)` inserts reachable by
+`authenticated` · employee self-promotion **403** · employee inserts into
+`audit_log` / `order_confirmation_events` / `easyorders_sync_logs` **403** ·
+the ten new tables service-role 200 / anon 401 · `p_triggered_by` is `text`
+and accepts `'cron'` · the `sync_type` constraint accepts `'backfill'` /
+`'catch-up'` · 40/40 `CREATE POLICY` statements drop-first and 9/9
+`CREATE TRIGGER` statements drop-first · a fresh ordered `supabase db push`
+ends safe (23 historical `user_metadata` policies, all dropped later) · the
+fresh clone is byte-identical and free of key material.
+
+### 8.3 Production re-verification (live deployment)
+
+Anonymous → 9 API endpoints **401** · anonymous registration off the
+allow-list **403** · allow-listed + existing **409** (no account created) ·
+admin → 9 reads **200**, admin writes **400** (role passed, validation
+rejected) · employee → 5 reads **200**, 4 privileged writes **403** ·
+the service-role key used as a session cookie **401** ·
+`set local role authenticated; select … from orders` succeeds, so the RLS
+policies still evaluate.
+
+### 8.4 Regression (re-run)
+
+`npx tsc --noEmit` **exit 0** · `npm test` **458/458**, 38 files · `npm run
+build` **exit 0**, 27 static pages · `npm run test:e2e` **36 passed, 1
+skipped**, exit 0.
+
+### 8.5 The fix, dry-run verified against production
+
+`supabase/migrations/20260130000000_lock_public_function_execute.sql` —
+revoke EXECUTE from PUBLIC/anon/authenticated on all 24 public functions,
+grant it back to `service_role`, grant `authenticated` exactly the three
+functions live policies call (`app_has_role`, `app_role_rank`,
+`current_profile_is_active`), and drop the S-30 policy.
+
+Executed **inside a transaction that was rolled back** on the live database:
+
+```
+V1_counts = anon_exec=0 | auth_exec=3 | svc_exec=24 | total=24
+V2_authenticated_still_holds = app_has_role, app_role_rank, current_profile_is_active
+V3_leftover_policy = 0
+```
+
+The functional guard `set local role authenticated; select count(*) from
+orders;` succeeded, and a post-rollback re-probe confirmed production is
+unchanged. The 8 trigger functions are revoked too; that does not break their
+triggers — verified empirically (a revoked trigger function still fired for a
+non-owner role; PostgreSQL checks EXECUTE at `CREATE TRIGGER`, not at fire
+time).
+
+**NOT APPLIED.** Applying it is a production database write and needs the
+owner's approval — Plan C in `audit/20_REMEDIATION_PLANS.md`.
+
+### 8.6 Git-history scan (12 commits, 133 155 patch lines)
+
+`sb_secret_*` **0** · JWT **0** · private key **0** · AWS key **0** · live
+`SUPABASE_SERVICE_ROLE_KEY` exact match **0** · the live key in any built
+artefact **0 files** · any `'use client'` module importing the service client
+**0** · 6 phone-shaped and 24 email-shaped values, of which **0 of 6** and
+**0 of 24** match any of the **1 935** live customers (paginated read, not
+the 1 000-row REST cap) · only `.env.example` was ever committed among
+sensitive filenames; no `.env.local`, no keys, no `storage-state.json`.
+
+### 8.7 Still owner-only (unchanged, now with evidence)
+
+1. **Apply `20260130000000` to production** — Plan C. *This is the one item
+   that must happen before the project can be called secure.*
+2. **Rewrite the git history** — Plan A. Optional on current evidence: the
+   only genuine credential in the history is the stale, already-dead EasyOrders
+   key, and the phone/email values match no live customer. A decision to
+   accept that is also a valid outcome.
+3. **Rotate `SUPABASE_SERVICE_ROLE_KEY`** — Plan B. Optional on current
+   evidence: the key was never committed, never appears in a built artefact,
+   and cannot be used as a session cookie. It is a new-style `sb_secret_` key,
+   so a rotation can be genuinely zero-downtime when wanted.

@@ -75,8 +75,9 @@ const PENDING = [
   '20260126000000_lock_user_profile_role.sql',
   '20260127000000_grant_brain_approvals_snapshots.sql',
   '20260128000000_replace_jwt_user_metadata_role_checks.sql',
-  '20260129000000_scope_system_insert_policies.sql',
-]
+    '20260129000000_scope_system_insert_policies.sql',
+    '20260130000000_lock_public_function_execute.sql',
+  ]
 
 /** Tables each migration creates — used to verify the result. */
 const EXPECTED_TABLES = {
@@ -102,6 +103,20 @@ const EXPECTED_FUNCTIONS = {
     'increment_easyorders_counters',
     'record_easyorders_sync_run',
   ],
+}
+
+/**
+ * Privileges each migration locks down — the "was it applied?" probe for the
+ * migrations that change grants rather than create objects.
+ *
+ * `20260130000000_lock_public_function_execute.sql` revokes EXECUTE on every
+ * public function from PUBLIC/anon/authenticated, so the live proof is that
+ * `anon` can no longer execute ANY of them.
+ */
+const EXPECTED_REVOKES = {
+  '20260130000000_lock_public_function_execute.sql': {
+    anon_executable_functions: 0,
+  },
 }
 
 async function readMigration(name) {
