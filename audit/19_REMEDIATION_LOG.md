@@ -310,6 +310,31 @@ The role split in production matches the contract the database enforces: *read: 
 employee, decide: admin* for the AI queue, *read: viewer, write: manager* for reconciliation, and
 *read: viewer, write: admin* for the business-brain profile.
 
+### 7.4.6 A fresh deployment ends safe
+
+The live project has no migration ledger, so a **fresh** database is built by replaying
+`supabase/migrations/` in order. The forgeable policies are still in
+`20240111000000_fix_user_profiles_rls.sql` — they have to be, or the replay would not
+reproduce the schema — so the question is whether a later migration drops every one of them.
+
+A mechanical check over the whole migration history: **23** policies are created with a
+`user_metadata` role test, and **all 23** are dropped by a later migration
+(`20260120000000_align_rls_with_app_roles.sql`, `20260126000000_lock_user_profile_role.sql` or
+`20260128000000_replace_jwt_user_metadata_role_checks.sql`). A fresh ordered
+`supabase db push` therefore ends with the same 0 forgeable policies the live project now has.
+
+The same check for re-runnability: all **40** `CREATE POLICY` statements in the bundle have a
+matching `DROP POLICY IF EXISTS`, and all **9** `CREATE TRIGGER` statements have a matching
+`DROP TRIGGER IF EXISTS`.
+
+### 7.4.7 The pushed repository, verified from a fresh clone
+
+`git clone git@github.com:AN2Sv772/el-nour.git` → 459 tracked files, and **every one of them is
+byte-identical** to the source tree. No key material, no redacted PII, and the live
+`SUPABASE_SERVICE_ROLE_KEY` literal are absent. `.env`, `.env.local`, `dev.log`,
+`shots/storage-state.json`, `.agents` and `.vercel` are all absent. No `exec_sql` caller remains
+in code — the three textual hits are the comments that explain why the template was removed.
+
 ### 7.5 Still owner-only
 
 1. **Rotate `SUPABASE_SERVICE_ROLE_KEY`.** The key is no longer hardcoded anywhere in the
